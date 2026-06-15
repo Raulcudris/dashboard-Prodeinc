@@ -1,62 +1,94 @@
 "use client";
 
-import { Box, Toolbar } from "@mui/material";
-import { ReactNode, useState } from "react";
-import {
-  Sidebar,
-  DRAWER_WIDTH,
-  DRAWER_COLLAPSED_WIDTH
-} from "./Sidebar";
-import { Topbar } from "./Topbar";
+import { useState } from "react";
+import { Box, useMediaQuery, useTheme } from "@mui/material";
+import { DashboardSidebar } from "./DashboardSidebar";
+import { DashboardTopbar } from "./DashboardTopbar";
 
 interface DashboardLayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
+const drawerWidth = 292;
+const collapsedDrawerWidth = 84;
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const theme = useTheme();
+
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), {
+    noSsr: true
+  });
+
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
-  const currentDrawerWidth = collapsed
-    ? DRAWER_COLLAPSED_WIDTH
-    : DRAWER_WIDTH;
+  const currentDrawerWidth = collapsed ? collapsedDrawerWidth : drawerWidth;
 
-  const handleToggle = () => {
+  const handleMenuClick = () => {
+    if (isMobile) {
+      setMobileOpen(true);
+      return;
+    }
+
     setCollapsed(prev => !prev);
+  };
+
+  const handleCloseSidebar = () => {
+    setMobileOpen(false);
   };
 
   return (
     <Box
       sx={{
         display: "flex",
+        width: "100%",
         minHeight: "100vh",
-        bgcolor: "background.default"
+        bgcolor: "#f4f6f8",
+        overflowX: "hidden"
       }}
     >
-      <Sidebar collapsed={collapsed} onToggle={handleToggle} />
+      <DashboardTopbar
+        drawerWidth={currentDrawerWidth}
+        onMenuClick={handleMenuClick}
+      />
 
-      <Topbar collapsed={collapsed} onToggle={handleToggle} />
+      <DashboardSidebar
+        drawerWidth={drawerWidth}
+        collapsedWidth={collapsedDrawerWidth}
+        collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        onClose={handleCloseSidebar}
+      />
 
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          width: {
-            xs: "100%",
-            md: `calc(100% - ${currentDrawerWidth}px)`
-          },
-          ml: {
-            xs: 0,
-            md: `${currentDrawerWidth}px`
-          },
-          p: {
-            xs: 2,
-            md: 3
-          },
-          transition: "all 0.25s ease"
+          minWidth: 0,
+          width: "100%",
+          pt: "72px",
+          transition: "all 0.22s ease"
         }}
       >
-        <Toolbar sx={{ minHeight: "72px !important" }} />
-        {children}
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: "100%",
+            mx: 0,
+            px: {
+              xs: 2,
+              sm: 2.5,
+              md: 3,
+              lg: 4
+            },
+            py: {
+              xs: 2.5,
+              md: 3
+            }
+          }}
+        >
+          {children}
+        </Box>
       </Box>
     </Box>
   );

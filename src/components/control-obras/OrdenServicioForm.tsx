@@ -1,70 +1,37 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { OrdenServicioDto } from "../../types/controlObras.types";
 
-const schema = z
-  .object({
-    orsIdentifkeyOrde: z.string().min(1, "La key de la orden es obligatoria"),
-    orsAutorifechaOrde: z.string().min(1, "La fecha de autorización es obligatoria"),
-    orsCodservicioSebs: z.string().min(1, "El código de servicio es obligatorio"),
-    orsServiceventOrde: z.string().min(1, "El evento o servicio es obligatorio"),
-    orsServiclugarOrde: z.string().min(1, "El lugar del servicio es obligatorio"),
-    orsServicobjetoOrde: z.string().min(1, "El objeto del servicio es obligatorio"),
-    orsPlanfechiniOrde: z.string().min(1, "La fecha inicial es obligatoria"),
-    orsPlanfechfinOrde: z.string().min(1, "La fecha final es obligatoria"),
-    prvIdentifkeyMprv: z.string().min(1, "El proveedor es obligatorio"),
-    prvIdentifkeyRelg: z.string().nullable().optional(),
-    orsValorbaseOrde: z.coerce.number().min(0, "El valor base no puede ser negativo"),
-    orsValordeivaOrde: z.coerce.number().min(0, "El IVA no puede ser negativo"),
-    orsValortotalOrde: z.coerce.number().min(0, "El total no puede ser negativo"),
-    orsTiporegistOrde: z.string().optional(),
-    orsEstadoregOrde: z.string().optional()
-  })
-  .refine(
-    data => {
-      if (!data.orsPlanfechiniOrde || !data.orsPlanfechfinOrde) {
-        return true;
-      }
-
-      return new Date(data.orsPlanfechfinOrde) >= new Date(data.orsPlanfechiniOrde);
-    },
-    {
-      message: "La fecha final no puede ser menor que la fecha inicial",
-      path: ["orsPlanfechfinOrde"]
-    }
-  );
-
-type FormValues = z.infer<typeof schema>;
-
 interface OrdenServicioFormProps {
-  initialData?: OrdenServicioDto | null;
+  open: boolean;
   loading?: boolean;
-  onCancel: () => void;
-  onSubmit: (data: OrdenServicioDto) => void;
+  initialData?: OrdenServicioDto | null;
+  onClose: () => void;
+  onSubmit: (data: OrdenServicioDto) => Promise<void> | void;
 }
 
-const defaultValues: FormValues = {
+const defaultValues: OrdenServicioDto = {
   orsIdentifkeyOrde: "",
   orsAutorifechaOrde: "",
-  orsCodservicioSebs: "MAQ",
+  orsCodservicioSebs: "",
   orsServiceventOrde: "",
   orsServiclugarOrde: "",
   orsServicobjetoOrde: "",
   orsPlanfechiniOrde: "",
   orsPlanfechfinOrde: "",
   prvIdentifkeyMprv: "",
-  prvIdentifkeyRelg: null,
+  prvIdentifkeyRelg: "",
   orsValorbaseOrde: 0,
   orsValordeivaOrde: 0,
   orsValortotalOrde: 0,
@@ -73,9 +40,10 @@ const defaultValues: FormValues = {
 };
 
 export function OrdenServicioForm({
-  initialData,
+  open,
   loading = false,
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: OrdenServicioFormProps) {
   const {
@@ -83,193 +51,192 @@ export function OrdenServicioForm({
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  } = useForm<OrdenServicioDto>({
     defaultValues
   });
 
   useEffect(() => {
-    if (initialData) {
-      reset({
-        orsIdentifkeyOrde: initialData.orsIdentifkeyOrde ?? "",
-        orsAutorifechaOrde: initialData.orsAutorifechaOrde ?? "",
-        orsCodservicioSebs: initialData.orsCodservicioSebs ?? "MAQ",
-        orsServiceventOrde: initialData.orsServiceventOrde ?? "",
-        orsServiclugarOrde: initialData.orsServiclugarOrde ?? "",
-        orsServicobjetoOrde: initialData.orsServicobjetoOrde ?? "",
-        orsPlanfechiniOrde: initialData.orsPlanfechiniOrde ?? "",
-        orsPlanfechfinOrde: initialData.orsPlanfechfinOrde ?? "",
-        prvIdentifkeyMprv: initialData.prvIdentifkeyMprv ?? "",
-        prvIdentifkeyRelg: initialData.prvIdentifkeyRelg ?? null,
-        orsValorbaseOrde: initialData.orsValorbaseOrde ?? 0,
-        orsValordeivaOrde: initialData.orsValordeivaOrde ?? 0,
-        orsValortotalOrde: initialData.orsValortotalOrde ?? 0,
-        orsTiporegistOrde: initialData.orsTiporegistOrde ?? "1",
-        orsEstadoregOrde: initialData.orsEstadoregOrde ?? "1"
-      });
-    } else {
-      reset(defaultValues);
-    }
-  }, [initialData, reset]);
-
-  const submitForm = (values: FormValues) => {
-    const data: OrdenServicioDto = {
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde,
-      orsAutorifechaOrde: values.orsAutorifechaOrde,
-      orsCodservicioSebs: values.orsCodservicioSebs,
-      orsServiceventOrde: values.orsServiceventOrde,
-      orsServiclugarOrde: values.orsServiclugarOrde,
-      orsServicobjetoOrde: values.orsServicobjetoOrde,
-      orsPlanfechiniOrde: values.orsPlanfechiniOrde,
-      orsPlanfechfinOrde: values.orsPlanfechfinOrde,
-      prvIdentifkeyMprv: values.prvIdentifkeyMprv,
-      prvIdentifkeyRelg: values.prvIdentifkeyRelg || null,
-      orsValorbaseOrde: Number(values.orsValorbaseOrde || 0),
-      orsValordeivaOrde: Number(values.orsValordeivaOrde || 0),
-      orsValortotalOrde: Number(values.orsValortotalOrde || 0),
-      orsTiporegistOrde: values.orsTiporegistOrde || "1",
-      orsEstadoregOrde: values.orsEstadoregOrde || "1"
-    };
-
-    onSubmit(data);
-  };
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar orden de servicio" : "Crear orden de servicio"}
+      </DialogTitle>
+
       <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key orden"
-            fullWidth
-            disabled={Boolean(initialData)}
-            error={Boolean(errors.orsIdentifkeyOrde)}
-            helperText={errors.orsIdentifkeyOrde?.message}
-            {...register("orsIdentifkeyOrde")}
-          />
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Código orden"
+              {...register("orsIdentifkeyOrde", {
+                required: "El código de la orden es obligatorio"
+              })}
+              error={!!errors.orsIdentifkeyOrde}
+              helperText={errors.orsIdentifkeyOrde?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Fecha autorización"
-            type="date"
-            fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
-            error={Boolean(errors.orsAutorifechaOrde)}
-            helperText={errors.orsAutorifechaOrde?.message}
-            {...register("orsAutorifechaOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Fecha autorización"
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+              {...register("orsAutorifechaOrde")}
+            />
+          </Grid>
 
-          <TextField
-            label="Código servicio"
-            fullWidth
-            error={Boolean(errors.orsCodservicioSebs)}
-            helperText={errors.orsCodservicioSebs?.message}
-            {...register("orsCodservicioSebs")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Código servicio"
+              {...register("orsCodservicioSebs")}
+            />
+          </Grid>
 
-          <TextField
-            label="Key proveedor"
-            fullWidth
-            error={Boolean(errors.prvIdentifkeyMprv)}
-            helperText={errors.prvIdentifkeyMprv?.message}
-            {...register("prvIdentifkeyMprv")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Evento / servicio"
+              {...register("orsServiceventOrde")}
+            />
+          </Grid>
 
-          <TextField
-            label="Fecha inicial plan"
-            type="date"
-            fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
-            error={Boolean(errors.orsPlanfechiniOrde)}
-            helperText={errors.orsPlanfechiniOrde?.message}
-            {...register("orsPlanfechiniOrde")}
-          />
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="Lugar del servicio"
+              {...register("orsServiclugarOrde")}
+            />
+          </Grid>
 
-          <TextField
-            label="Fecha final plan"
-            type="date"
-            fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
-            error={Boolean(errors.orsPlanfechfinOrde)}
-            helperText={errors.orsPlanfechfinOrde?.message}
-            {...register("orsPlanfechfinOrde")}
-          />
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Objeto de la orden"
+              {...register("orsServicobjetoOrde", {
+                required: "El objeto de la orden es obligatorio"
+              })}
+              error={!!errors.orsServicobjetoOrde}
+              helperText={errors.orsServicobjetoOrde?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Valor base"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValorbaseOrde)}
-            helperText={errors.orsValorbaseOrde?.message}
-            {...register("orsValorbaseOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Fecha inicio planeada"
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+              {...register("orsPlanfechiniOrde")}
+            />
+          </Grid>
 
-          <TextField
-            label="Valor IVA"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValordeivaOrde)}
-            helperText={errors.orsValordeivaOrde?.message}
-            {...register("orsValordeivaOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Fecha fin planeada"
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+              {...register("orsPlanfechfinOrde")}
+            />
+          </Grid>
 
-          <TextField
-            label="Valor total"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValortotalOrde)}
-            helperText={errors.orsValortotalOrde?.message}
-            {...register("orsValortotalOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Proveedor"
+              {...register("prvIdentifkeyMprv", {
+                required: "El proveedor es obligatorio"
+              })}
+              error={!!errors.prvIdentifkeyMprv}
+              helperText={errors.prvIdentifkeyMprv?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Lugar del servicio"
-            fullWidth
-            error={Boolean(errors.orsServiclugarOrde)}
-            helperText={errors.orsServiclugarOrde?.message}
-            {...register("orsServiclugarOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Representante legal"
+              {...register("prvIdentifkeyRelg")}
+            />
+          </Grid>
 
-          <TextField
-            label="Evento / Servicio"
-            fullWidth
-            multiline
-            minRows={2}
-            sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
-            error={Boolean(errors.orsServiceventOrde)}
-            helperText={errors.orsServiceventOrde?.message}
-            {...register("orsServiceventOrde")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Valor base"
+              {...register("orsValorbaseOrde", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="Objeto del servicio"
-            fullWidth
-            multiline
-            minRows={3}
-            sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
-            error={Boolean(errors.orsServicobjetoOrde)}
-            helperText={errors.orsServicobjetoOrde?.message}
-            {...register("orsServicobjetoOrde")}
-          />
-        </Box>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Valor IVA"
+              {...register("orsValordeivaOrde", { valueAsNumber: true })}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Valor total"
+              {...register("orsValortotalOrde", { valueAsNumber: true })}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Tipo registro"
+              {...register("orsTiporegistOrde")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Estado"
+              {...register("orsEstadoregOrde")}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }

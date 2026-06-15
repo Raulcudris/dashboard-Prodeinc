@@ -1,185 +1,207 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { PlanTrabajoDto } from "../../types/controlObras.types";
 
-const schema = z.object({
-  orsIdentifkeyPltr: z.string().min(1, "La key del plan es obligatoria"),
-  orsIdentifkeyOrde: z.string().min(1, "La orden es obligatoria"),
-  orsIdentifkeyPunt: z.string().min(1, "El sitio / punto es obligatorio"),
-  orsDesactividadPltr: z.string().min(1, "La actividad es obligatoria"),
-  orsIdentifkeyRseq: z.string().min(1, "El resumen de equipo es obligatorio"),
-  prvIdentifkeyInve: z.string().min(1, "El equipo es obligatorio"),
-  orsCantidunidadRseq: z.coerce.number().min(0, "La cantidad no puede ser negativa"),
-  orsValorunidadRseq: z.coerce.number().min(0, "El valor unidad no puede ser negativo"),
-  orsValortotalRseq: z.coerce.number().min(0, "El valor total no puede ser negativo"),
-  orsTiporegistPltr: z.string().optional(),
-  orsEstadoregPltr: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
-
 interface PlanTrabajoFormProps {
+  open: boolean;
   loading?: boolean;
-  ordenKeyDefault?: string;
-  onCancel: () => void;
-  onSubmit: (data: PlanTrabajoDto) => void;
+  initialData?: PlanTrabajoDto | null;
+  onClose: () => void;
+  onSubmit: (data: PlanTrabajoDto) => Promise<void> | void;
 }
 
+const defaultValues: PlanTrabajoDto = {
+  orsIdentifkeyPltr: "",
+  orsIdentifkeyOrde: "",
+  orsIdentifkeyPunt: "",
+  orsDesactividadPltr: "",
+  orsIdentifkeyRseq: "",
+  prvIdentifkeyInve: "",
+  orsCantidunidadRseq: 0,
+  orsValorunidadRseq: 0,
+  orsValortotalRseq: 0,
+  orsTiporegistPltr: "1",
+  orsEstadoregPltr: "1"
+};
+
 export function PlanTrabajoForm({
+  open,
   loading = false,
-  ordenKeyDefault = "",
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: PlanTrabajoFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
+    watch,
+    setValue,
     formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      orsIdentifkeyPltr: "",
-      orsIdentifkeyOrde: ordenKeyDefault,
-      orsIdentifkeyPunt: "",
-      orsDesactividadPltr: "",
-      orsIdentifkeyRseq: "",
-      prvIdentifkeyInve: "",
-      orsCantidunidadRseq: 0,
-      orsValorunidadRseq: 0,
-      orsValortotalRseq: 0,
-      orsTiporegistPltr: "1",
-      orsEstadoregPltr: "1"
-    }
+  } = useForm<PlanTrabajoDto>({
+    defaultValues
   });
 
-  const submitForm = (values: FormValues) => {
-    onSubmit({
-      orsIdentifkeyPltr: values.orsIdentifkeyPltr,
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde,
-      orsIdentifkeyPunt: values.orsIdentifkeyPunt,
-      orsDesactividadPltr: values.orsDesactividadPltr,
-      orsIdentifkeyRseq: values.orsIdentifkeyRseq,
-      prvIdentifkeyInve: values.prvIdentifkeyInve,
-      orsCantidunidadRseq: Number(values.orsCantidunidadRseq || 0),
-      orsValorunidadRseq: Number(values.orsValorunidadRseq || 0),
-      orsValortotalRseq: Number(values.orsValortotalRseq || 0),
-      orsTiporegistPltr: values.orsTiporegistPltr || "1",
-      orsEstadoregPltr: values.orsEstadoregPltr || "1"
-    });
-  };
+  const cantidad = watch("orsCantidunidadRseq");
+  const valorUnidad = watch("orsValorunidadRseq");
+
+  useEffect(() => {
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
+
+  useEffect(() => {
+    const total = Number(cantidad || 0) * Number(valorUnidad || 0);
+    setValue("orsValortotalRseq", total);
+  }, [cantidad, valorUnidad, setValue]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar plan de trabajo" : "Crear plan de trabajo proyectado"}
+      </DialogTitle>
+
       <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key plan"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPltr)}
-            helperText={errors.orsIdentifkeyPltr?.message}
-            {...register("orsIdentifkeyPltr")}
-          />
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Código plan"
+              {...register("orsIdentifkeyPltr", {
+                required: "El código del plan es obligatorio"
+              })}
+              error={!!errors.orsIdentifkeyPltr}
+              helperText={errors.orsIdentifkeyPltr?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key orden"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyOrde)}
-            helperText={errors.orsIdentifkeyOrde?.message}
-            {...register("orsIdentifkeyOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Orden de servicio"
+              {...register("orsIdentifkeyOrde", {
+                required: "La orden es obligatoria"
+              })}
+              error={!!errors.orsIdentifkeyOrde}
+              helperText={errors.orsIdentifkeyOrde?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key punto"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPunt)}
-            helperText={errors.orsIdentifkeyPunt?.message}
-            {...register("orsIdentifkeyPunt")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Punto / sitio"
+              {...register("orsIdentifkeyPunt", {
+                required: "El punto es obligatorio"
+              })}
+              error={!!errors.orsIdentifkeyPunt}
+              helperText={errors.orsIdentifkeyPunt?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key resumen equipo"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyRseq)}
-            helperText={errors.orsIdentifkeyRseq?.message}
-            {...register("orsIdentifkeyRseq")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Resumen equipo"
+              {...register("orsIdentifkeyRseq")}
+            />
+          </Grid>
 
-          <TextField
-            label="Key equipo"
-            fullWidth
-            error={Boolean(errors.prvIdentifkeyInve)}
-            helperText={errors.prvIdentifkeyInve?.message}
-            {...register("prvIdentifkeyInve")}
-          />
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Actividad proyectada"
+              {...register("orsDesactividadPltr", {
+                required: "La actividad es obligatoria"
+              })}
+              error={!!errors.orsDesactividadPltr}
+              helperText={errors.orsDesactividadPltr?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Cantidad unidad"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsCantidunidadRseq)}
-            helperText={errors.orsCantidunidadRseq?.message}
-            {...register("orsCantidunidadRseq")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Equipo / maquinaria"
+              {...register("prvIdentifkeyInve")}
+            />
+          </Grid>
 
-          <TextField
-            label="Valor unidad"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValorunidadRseq)}
-            helperText={errors.orsValorunidadRseq?.message}
-            {...register("orsValorunidadRseq")}
-          />
+          <Grid size={{ xs: 12, md: 2 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Cantidad"
+              {...register("orsCantidunidadRseq", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="Valor total"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValortotalRseq)}
-            helperText={errors.orsValortotalRseq?.message}
-            {...register("orsValortotalRseq")}
-          />
+          <Grid size={{ xs: 12, md: 2 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Valor unidad"
+              {...register("orsValorunidadRseq", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="Actividad"
-            fullWidth
-            multiline
-            minRows={3}
-            sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
-            error={Boolean(errors.orsDesactividadPltr)}
-            helperText={errors.orsDesactividadPltr?.message}
-            {...register("orsDesactividadPltr")}
-          />
-        </Box>
+          <Grid size={{ xs: 12, md: 2 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Valor total"
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+              {...register("orsValortotalRseq", { valueAsNumber: true })}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Tipo registro"
+              {...register("orsTiporegistPltr")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Estado"
+              {...register("orsEstadoregPltr")}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }

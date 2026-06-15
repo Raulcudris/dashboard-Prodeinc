@@ -1,231 +1,207 @@
 import { http } from "./apiClient";
-import { ApiResponse } from "../types/common.types";
+import {
+  ApiResponse,
+  PageParams,
+  ChangeStatusRequest,
+  DeleteRequest,
+  buildApiWrapper,
+  buildPageParams
+} from "../types/common.types";
 import {
   EquipoDto,
   TipoEquipoDto,
   UnidadMedidaDto
 } from "../types/equipos.types";
 
-export interface EquiposPageParams {
-  currentPage?: number;
-  pageSize?: number;
-  currentpage?: number;
-  pagesize?: number;
-  parameter?: string;
-  filter?: string;
-}
-
-function buildPageParams(params?: EquiposPageParams) {
-  const currentPage = params?.currentPage ?? params?.currentpage ?? 1;
-  const pageSize = params?.pageSize ?? params?.pagesize ?? 100;
-
-  return {
-    currentPage,
-    pageSize,
-    currentpage: currentPage,
-    pagesize: pageSize,
-    parameter: params?.parameter ?? "TEXT",
-    filter: params?.filter ?? ""
-  };
-}
+const BASE_UNIDADES = "/api/equipos-maquinaria/unidades";
+const BASE_TIPOS = "/api/equipos-maquinaria/tipos";
+const BASE_EQUIPOS = "/api/equipos-maquinaria/equipos";
 
 export const equiposMaquinariaService = {
   unidades: {
-    health: () =>
-      http.get<string>("/api/equipos-maquinaria/unidades/health"),
+    health: () => http.get<string>(`${BASE_UNIDADES}/health`),
 
-    getPages: (params?: EquiposPageParams) =>
-      http.get<ApiResponse<UnidadMedidaDto>>(
-        "/api/equipos-maquinaria/unidades/pages",
-        { params: buildPageParams(params) }
-      ),
-
-    get: (unidadKey: string) =>
-      http.get<UnidadMedidaDto>(
-        `/api/equipos-maquinaria/unidades/get/${unidadKey}`
-      ),
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<UnidadMedidaDto>>(`${BASE_UNIDADES}/pages`, {
+        params: buildPageParams(params)
+      }),
 
     getByKey: (unidadKey: string) =>
-      http.get<UnidadMedidaDto>(
-        "/api/equipos-maquinaria/unidades/by-key",
-        { params: { unidadKey } }
-      ),
+      http.get<UnidadMedidaDto>(`${BASE_UNIDADES}/by-key`, {
+        params: { unidadKey }
+      }),
 
     getByEstado: (estado: string) =>
-      http.get<ApiResponse<UnidadMedidaDto>>(
-        "/api/equipos-maquinaria/unidades/by-estado",
-        { params: { estado } }
-      ),
+      http.get<ApiResponse<UnidadMedidaDto>>(`${BASE_UNIDADES}/by-estado`, {
+        params: { estado }
+      }),
 
     create: (data: UnidadMedidaDto) =>
-      http.post<UnidadMedidaDto>(
-        "/api/equipos-maquinaria/unidades/create",
-        data
+      http.post<ApiResponse<UnidadMedidaDto>>(
+        `${BASE_UNIDADES}/create`,
+        buildApiWrapper(data)
       ),
 
     update: (unidadKey: string, data: UnidadMedidaDto) =>
-      http.put<UnidadMedidaDto>(
-        `/api/equipos-maquinaria/unidades/update/${unidadKey}`,
-        data
+      http.put<ApiResponse<UnidadMedidaDto>>(
+        `${BASE_UNIDADES}/update/${unidadKey}`,
+        buildApiWrapper(data)
       ),
 
-    changeStatus: (unidadKey: string, estado: string) =>
-      http.patch<UnidadMedidaDto>(
-        `/api/equipos-maquinaria/unidades/changestatus/${unidadKey}`,
-        null,
-        { params: { estado } }
+    changeStatus: (recPKey: string, recEstreg: string) =>
+      http.post<ApiResponse<UnidadMedidaDto>>(
+        `${BASE_UNIDADES}/changestatus`,
+        [
+          {
+            recPKey,
+            recEstreg
+          } satisfies ChangeStatusRequest
+        ]
       ),
 
-    delete: (unidadKey: string) =>
-      http.delete<void>(
-        `/api/equipos-maquinaria/unidades/delete/${unidadKey}`
+    delete: (recPKey: string) =>
+      http.post<ApiResponse<UnidadMedidaDto>>(
+        `${BASE_UNIDADES}/delete`,
+        [
+          {
+            recPKey
+          } satisfies DeleteRequest
+        ]
       )
   },
 
   tipos: {
-    health: () =>
-      http.get<string>("/api/equipos-maquinaria/tipos/health"),
+    health: () => http.get<string>(`${BASE_TIPOS}/health`),
 
-    getPages: (params?: EquiposPageParams) =>
-      http.get<ApiResponse<TipoEquipoDto>>(
-        "/api/equipos-maquinaria/tipos/pages",
-        { params: buildPageParams(params) }
-      ),
-
-    get: (id: number) =>
-      http.get<TipoEquipoDto>(
-        `/api/equipos-maquinaria/tipos/get/${id}`
-      ),
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<TipoEquipoDto>>(`${BASE_TIPOS}/pages`, {
+        params: buildPageParams(params)
+      }),
 
     getByKey: (tipoEquipoKey: string) =>
-      http.get<TipoEquipoDto>(
-        "/api/equipos-maquinaria/tipos/by-key",
-        { params: { tipoEquipoKey } }
-      ),
+      http.get<TipoEquipoDto>(`${BASE_TIPOS}/by-key`, {
+        params: { tipoEquipoKey }
+      }),
 
     getByUnidad: (unidadKey: string) =>
-      http.get<ApiResponse<TipoEquipoDto>>(
-        "/api/equipos-maquinaria/tipos/by-unidad",
-        { params: { unidadKey } }
-      ),
+      http.get<ApiResponse<TipoEquipoDto>>(`${BASE_TIPOS}/by-unidad`, {
+        params: { unidadKey }
+      }),
 
     getByEstado: (estado: string) =>
-      http.get<ApiResponse<TipoEquipoDto>>(
-        "/api/equipos-maquinaria/tipos/by-estado",
-        { params: { estado } }
-      ),
+      http.get<ApiResponse<TipoEquipoDto>>(`${BASE_TIPOS}/by-estado`, {
+        params: { estado }
+      }),
 
     create: (data: TipoEquipoDto) =>
-      http.post<TipoEquipoDto>(
-        "/api/equipos-maquinaria/tipos/create",
-        data
-      ),
-
-    createList: (data: TipoEquipoDto[]) =>
-      http.post<TipoEquipoDto[]>(
-        "/api/equipos-maquinaria/tipos/create-list",
-        data
+      http.post<ApiResponse<TipoEquipoDto>>(
+        `${BASE_TIPOS}/create`,
+        buildApiWrapper(data)
       ),
 
     update: (id: number, data: TipoEquipoDto) =>
-      http.put<TipoEquipoDto>(
-        `/api/equipos-maquinaria/tipos/update/${id}`,
-        data
+      http.put<ApiResponse<TipoEquipoDto>>(
+        `${BASE_TIPOS}/update/${id}`,
+        buildApiWrapper(data)
       ),
 
-    changeStatus: (id: number, estado: string) =>
-      http.patch<TipoEquipoDto>(
-        `/api/equipos-maquinaria/tipos/changestatus/${id}`,
-        null,
-        { params: { estado } }
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      http.post<ApiResponse<TipoEquipoDto>>(
+        `${BASE_TIPOS}/changestatus`,
+        [
+          {
+            recPKey,
+            recEstreg
+          } satisfies ChangeStatusRequest
+        ]
       ),
 
-    delete: (id: number) =>
-      http.delete<void>(
-        `/api/equipos-maquinaria/tipos/delete/${id}`
+    delete: (recPKey: number) =>
+      http.post<ApiResponse<TipoEquipoDto>>(
+        `${BASE_TIPOS}/delete`,
+        [
+          {
+            recPKey
+          } satisfies DeleteRequest
+        ]
       )
   },
 
   equipos: {
-    health: () =>
-      http.get<string>("/api/equipos-maquinaria/equipos/health"),
+    health: () => http.get<string>(`${BASE_EQUIPOS}/health`),
 
-    getPages: (params?: EquiposPageParams) =>
-      http.get<ApiResponse<EquipoDto>>(
-        "/api/equipos-maquinaria/equipos/pages",
-        { params: buildPageParams(params) }
-      ),
-
-    get: (id: number) =>
-      http.get<EquipoDto>(
-        `/api/equipos-maquinaria/equipos/get/${id}`
-      ),
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<EquipoDto>>(`${BASE_EQUIPOS}/pages`, {
+        params: buildPageParams(params)
+      }),
 
     getByKey: (equipoKey: string) =>
-      http.get<EquipoDto>(
-        "/api/equipos-maquinaria/equipos/by-key",
-        { params: { equipoKey } }
-      ),
+      http.get<EquipoDto>(`${BASE_EQUIPOS}/by-key`, {
+        params: { equipoKey }
+      }),
 
     getByProveedor: (proveedorKey: string) =>
-      http.get<ApiResponse<EquipoDto>>(
-        "/api/equipos-maquinaria/equipos/by-proveedor",
-        { params: { proveedorKey } }
-      ),
+      http.get<ApiResponse<EquipoDto>>(`${BASE_EQUIPOS}/by-proveedor`, {
+        params: { proveedorKey }
+      }),
 
     getByTipoEquipo: (tipoEquipoKey: string) =>
-      http.get<ApiResponse<EquipoDto>>(
-        "/api/equipos-maquinaria/equipos/by-tipo-equipo",
-        { params: { tipoEquipoKey } }
-      ),
+      http.get<ApiResponse<EquipoDto>>(`${BASE_EQUIPOS}/by-tipo-equipo`, {
+        params: { tipoEquipoKey }
+      }),
 
     getByDisponible: (disponible: string) =>
-      http.get<ApiResponse<EquipoDto>>(
-        "/api/equipos-maquinaria/equipos/by-disponible",
-        { params: { disponible } }
-      ),
+      http.get<ApiResponse<EquipoDto>>(`${BASE_EQUIPOS}/by-disponible`, {
+        params: { disponible }
+      }),
 
     getByEstado: (estado: string) =>
-      http.get<ApiResponse<EquipoDto>>(
-        "/api/equipos-maquinaria/equipos/by-estado",
-        { params: { estado } }
-      ),
+      http.get<ApiResponse<EquipoDto>>(`${BASE_EQUIPOS}/by-estado`, {
+        params: { estado }
+      }),
 
     create: (data: EquipoDto) =>
-      http.post<EquipoDto>(
-        "/api/equipos-maquinaria/equipos/create",
-        data
-      ),
-
-    createList: (data: EquipoDto[]) =>
-      http.post<EquipoDto[]>(
-        "/api/equipos-maquinaria/equipos/create-list",
-        data
+      http.post<ApiResponse<EquipoDto>>(
+        `${BASE_EQUIPOS}/create`,
+        buildApiWrapper(data)
       ),
 
     update: (id: number, data: EquipoDto) =>
-      http.put<EquipoDto>(
-        `/api/equipos-maquinaria/equipos/update/${id}`,
-        data
+      http.put<ApiResponse<EquipoDto>>(
+        `${BASE_EQUIPOS}/update/${id}`,
+        buildApiWrapper(data)
       ),
 
-    changeStatus: (id: number, estado: string) =>
-      http.patch<EquipoDto>(
-        `/api/equipos-maquinaria/equipos/changestatus/${id}`,
-        null,
-        { params: { estado } }
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      http.post<ApiResponse<EquipoDto>>(
+        `${BASE_EQUIPOS}/changestatus`,
+        [
+          {
+            recPKey,
+            recEstreg
+          } satisfies ChangeStatusRequest
+        ]
       ),
 
-    changeDisponible: (id: number, disponible: string) =>
-      http.patch<EquipoDto>(
-        `/api/equipos-maquinaria/equipos/changedisponible/${id}`,
-        null,
-        { params: { disponible } }
+    changeDisponible: (recPKey: number, recEstreg: string) =>
+      http.post<ApiResponse<EquipoDto>>(
+        `${BASE_EQUIPOS}/changedisponible`,
+        [
+          {
+            recPKey,
+            recEstreg
+          } satisfies ChangeStatusRequest
+        ]
       ),
 
-    delete: (id: number) =>
-      http.delete<void>(
-        `/api/equipos-maquinaria/equipos/delete/${id}`
+    delete: (recPKey: number) =>
+      http.post<ApiResponse<EquipoDto>>(
+        `${BASE_EQUIPOS}/delete`,
+        [
+          {
+            recPKey
+          } satisfies DeleteRequest
+        ]
       )
   }
 };

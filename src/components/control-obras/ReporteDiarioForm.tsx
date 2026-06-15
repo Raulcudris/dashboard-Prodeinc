@@ -1,180 +1,180 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { ReporteDiarioDto } from "../../types/controlObras.types";
 
-const schema = z.object({
-  orsIdentifkeyPdia: z.string().min(1, "La key del reporte es obligatoria"),
-  orsIdentifkeyOrde: z.string().min(1, "La orden es obligatoria"),
-  orsIdentifkeyPlse: z.string().min(1, "El plan semanal es obligatorio"),
-  orsIdentifkeyPsem: z.string().min(1, "La proyección semanal es obligatoria"),
-  orsObservacionPdia: z.string().optional(),
-  orsFechareportPdia: z.string().min(1, "La fecha del reporte es obligatoria"),
-  orsEjecutunidadPdia: z.coerce
-    .number()
-    .min(0, "La cantidad ejecutada no puede ser negativa"),
-  orsFechasistemaPdia: z.string().optional(),
-  orsTiporegistPdia: z.string().optional(),
-  orsEstadoregPdia: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
-
 interface ReporteDiarioFormProps {
+  open: boolean;
   loading?: boolean;
-  ordenKeyDefault?: string;
-  planSemanalKeyDefault?: string;
-  proyeccionKeyDefault?: string;
-  onCancel: () => void;
-  onSubmit: (data: ReporteDiarioDto) => void;
+  initialData?: ReporteDiarioDto | null;
+  onClose: () => void;
+  onSubmit: (data: ReporteDiarioDto) => Promise<void> | void;
 }
 
+const defaultValues: ReporteDiarioDto = {
+  orsIdentifkeyPdia: "",
+  orsIdentifkeyOrde: "",
+  orsIdentifkeyPlse: "",
+  orsIdentifkeyPsem: "",
+  orsObservacionPdia: "",
+  orsFechareportPdia: "",
+  orsEjecutunidadPdia: 0,
+  orsTiporegistPdia: "1",
+  orsEstadoregPdia: "1"
+};
+
 export function ReporteDiarioForm({
+  open,
   loading = false,
-  ordenKeyDefault = "",
-  planSemanalKeyDefault = "",
-  proyeccionKeyDefault = "",
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: ReporteDiarioFormProps) {
-  const today = new Date().toISOString().slice(0, 10);
-
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      orsIdentifkeyPdia: "",
-      orsIdentifkeyOrde: ordenKeyDefault,
-      orsIdentifkeyPlse: planSemanalKeyDefault,
-      orsIdentifkeyPsem: proyeccionKeyDefault,
-      orsObservacionPdia: "",
-      orsFechareportPdia: today,
-      orsEjecutunidadPdia: 0,
-      orsFechasistemaPdia: today,
-      orsTiporegistPdia: "1",
-      orsEstadoregPdia: "1"
-    }
+  } = useForm<ReporteDiarioDto>({
+    defaultValues
   });
 
-  const submitForm = (values: FormValues) => {
-    onSubmit({
-      orsIdentifkeyPdia: values.orsIdentifkeyPdia,
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde,
-      orsIdentifkeyPlse: values.orsIdentifkeyPlse,
-      orsIdentifkeyPsem: values.orsIdentifkeyPsem,
-      orsObservacionPdia: values.orsObservacionPdia || "",
-      orsFechareportPdia: values.orsFechareportPdia,
-      orsEjecutunidadPdia: Number(values.orsEjecutunidadPdia || 0),
-      orsFechasistemaPdia: values.orsFechasistemaPdia || today,
-      orsTiporegistPdia: values.orsTiporegistPdia || "1",
-      orsEstadoregPdia: values.orsEstadoregPdia || "1"
-    });
-  };
+  useEffect(() => {
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar reporte diario" : "Crear reporte diario"}
+      </DialogTitle>
+
       <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key reporte diario"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPdia)}
-            helperText={errors.orsIdentifkeyPdia?.message}
-            {...register("orsIdentifkeyPdia")}
-          />
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Código reporte diario"
+              {...register("orsIdentifkeyPdia", {
+                required: "El código del reporte es obligatorio"
+              })}
+              error={!!errors.orsIdentifkeyPdia}
+              helperText={errors.orsIdentifkeyPdia?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key orden"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyOrde)}
-            helperText={errors.orsIdentifkeyOrde?.message}
-            {...register("orsIdentifkeyOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Orden de servicio"
+              {...register("orsIdentifkeyOrde", {
+                required: "La orden es obligatoria"
+              })}
+              error={!!errors.orsIdentifkeyOrde}
+              helperText={errors.orsIdentifkeyOrde?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key plan semanal"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPlse)}
-            helperText={errors.orsIdentifkeyPlse?.message}
-            {...register("orsIdentifkeyPlse")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Plan semanal"
+              {...register("orsIdentifkeyPlse", {
+                required: "El plan semanal es obligatorio"
+              })}
+              error={!!errors.orsIdentifkeyPlse}
+              helperText={errors.orsIdentifkeyPlse?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key proyección semanal"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPsem)}
-            helperText={errors.orsIdentifkeyPsem?.message}
-            {...register("orsIdentifkeyPsem")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Proyección semanal"
+              {...register("orsIdentifkeyPsem")}
+            />
+          </Grid>
 
-          <TextField
-            label="Fecha reporte"
-            type="date"
-            fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
-            error={Boolean(errors.orsFechareportPdia)}
-            helperText={errors.orsFechareportPdia?.message}
-            {...register("orsFechareportPdia")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Fecha reporte"
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+              {...register("orsFechareportPdia", {
+                required: "La fecha del reporte es obligatoria"
+              })}
+              error={!!errors.orsFechareportPdia}
+              helperText={errors.orsFechareportPdia?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Cantidad ejecutada"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsEjecutunidadPdia)}
-            helperText={errors.orsEjecutunidadPdia?.message}
-            {...register("orsEjecutunidadPdia")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Cantidad ejecutada"
+              {...register("orsEjecutunidadPdia", {
+                valueAsNumber: true
+              })}
+            />
+          </Grid>
 
-          <TextField
-            label="Fecha sistema"
-            type="date"
-            fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
-            {...register("orsFechasistemaPdia")}
-          />
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Observación"
+              {...register("orsObservacionPdia")}
+            />
+          </Grid>
 
-          <TextField
-            label="Observación"
-            fullWidth
-            multiline
-            minRows={3}
-            sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
-            {...register("orsObservacionPdia")}
-          />
-        </Box>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Tipo registro"
+              {...register("orsTiporegistPdia")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Estado"
+              {...register("orsEstadoregPdia")}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }

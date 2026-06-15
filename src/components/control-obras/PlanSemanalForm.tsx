@@ -1,186 +1,216 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { PlanSemanalDto } from "../../types/controlObras.types";
 
-const schema = z.object({
-  orsIdentifkeyPlse: z.string().min(1, "La key del plan semanal es obligatoria"),
-  orsIdentifkeyOrde: z.string().min(1, "La orden es obligatoria"),
-  orsIdentifkeyPltr: z.string().min(1, "El plan de trabajo es obligatorio"),
-  orsIdentifkeyPsem: z.string().min(1, "La proyección semanal es obligatoria"),
-  orsCantidunidadPlse: z.coerce.number().min(0, "La cantidad no puede ser negativa"),
-  orsValorunidadPlse: z.coerce.number().min(0, "El valor unidad no puede ser negativo"),
-  orsValortotalPlse: z.coerce.number().min(0, "El valor total no puede ser negativo"),
-  orsEjecutunidadPlse: z.coerce.number().min(0, "La cantidad ejecutada no puede ser negativa"),
-  orsValorejecutPlse: z.coerce.number().min(0, "El valor ejecutado no puede ser negativo"),
-  orsTiporegistPlse: z.string().optional(),
-  orsEstadoregPlse: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
-
 interface PlanSemanalFormProps {
+  open: boolean;
   loading?: boolean;
-  ordenKeyDefault?: string;
-  planKeyDefault?: string;
-  onCancel: () => void;
-  onSubmit: (data: PlanSemanalDto) => void;
+  initialData?: PlanSemanalDto | null;
+  onClose: () => void;
+  onSubmit: (data: PlanSemanalDto) => Promise<void> | void;
 }
 
+const defaultValues: PlanSemanalDto = {
+  orsIdentifkeyPlse: "",
+  orsIdentifkeyOrde: "",
+  orsIdentifkeyPltr: "",
+  orsIdentifkeyPsem: "",
+  orsCantidunidadPlse: 0,
+  orsValorunidadPlse: 0,
+  orsValortotalPlse: 0,
+  orsEjecutunidadPlse: 0,
+  orsValorejecutPlse: 0,
+  orsTiporegistPlse: "1",
+  orsEstadoregPlse: "1"
+};
+
 export function PlanSemanalForm({
+  open,
   loading = false,
-  ordenKeyDefault = "",
-  planKeyDefault = "",
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: PlanSemanalFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
+    watch,
+    setValue,
     formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      orsIdentifkeyPlse: "",
-      orsIdentifkeyOrde: ordenKeyDefault,
-      orsIdentifkeyPltr: planKeyDefault,
-      orsIdentifkeyPsem: "",
-      orsCantidunidadPlse: 0,
-      orsValorunidadPlse: 0,
-      orsValortotalPlse: 0,
-      orsEjecutunidadPlse: 0,
-      orsValorejecutPlse: 0,
-      orsTiporegistPlse: "1",
-      orsEstadoregPlse: "1"
-    }
+  } = useForm<PlanSemanalDto>({
+    defaultValues
   });
 
-  const submitForm = (values: FormValues) => {
-    onSubmit({
-      orsIdentifkeyPlse: values.orsIdentifkeyPlse,
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde,
-      orsIdentifkeyPltr: values.orsIdentifkeyPltr,
-      orsIdentifkeyPsem: values.orsIdentifkeyPsem,
-      orsCantidunidadPlse: Number(values.orsCantidunidadPlse || 0),
-      orsValorunidadPlse: Number(values.orsValorunidadPlse || 0),
-      orsValortotalPlse: Number(values.orsValortotalPlse || 0),
-      orsEjecutunidadPlse: Number(values.orsEjecutunidadPlse || 0),
-      orsValorejecutPlse: Number(values.orsValorejecutPlse || 0),
-      orsTiporegistPlse: values.orsTiporegistPlse || "1",
-      orsEstadoregPlse: values.orsEstadoregPlse || "1"
-    });
-  };
+  const cantidad = watch("orsCantidunidadPlse");
+  const valorUnidad = watch("orsValorunidadPlse");
+  const ejecutado = watch("orsEjecutunidadPlse");
+
+  useEffect(() => {
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
+
+  useEffect(() => {
+    setValue(
+      "orsValortotalPlse",
+      Number(cantidad || 0) * Number(valorUnidad || 0)
+    );
+
+    setValue(
+      "orsValorejecutPlse",
+      Number(ejecutado || 0) * Number(valorUnidad || 0)
+    );
+  }, [cantidad, valorUnidad, ejecutado, setValue]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar plan semanal" : "Crear plan semanal"}
+      </DialogTitle>
+
       <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key plan semanal"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPlse)}
-            helperText={errors.orsIdentifkeyPlse?.message}
-            {...register("orsIdentifkeyPlse")}
-          />
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Código plan semanal"
+              {...register("orsIdentifkeyPlse", {
+                required: "El código del plan semanal es obligatorio"
+              })}
+              error={!!errors.orsIdentifkeyPlse}
+              helperText={errors.orsIdentifkeyPlse?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key orden"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyOrde)}
-            helperText={errors.orsIdentifkeyOrde?.message}
-            {...register("orsIdentifkeyOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Orden de servicio"
+              {...register("orsIdentifkeyOrde", {
+                required: "La orden es obligatoria"
+              })}
+              error={!!errors.orsIdentifkeyOrde}
+              helperText={errors.orsIdentifkeyOrde?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key plan trabajo"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPltr)}
-            helperText={errors.orsIdentifkeyPltr?.message}
-            {...register("orsIdentifkeyPltr")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Plan de trabajo"
+              {...register("orsIdentifkeyPltr", {
+                required: "El plan de trabajo es obligatorio"
+              })}
+              error={!!errors.orsIdentifkeyPltr}
+              helperText={errors.orsIdentifkeyPltr?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key proyección semanal"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPsem)}
-            helperText={errors.orsIdentifkeyPsem?.message}
-            {...register("orsIdentifkeyPsem")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Proyección semanal"
+              {...register("orsIdentifkeyPsem")}
+            />
+          </Grid>
 
-          <TextField
-            label="Cantidad planeada"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsCantidunidadPlse)}
-            helperText={errors.orsCantidunidadPlse?.message}
-            {...register("orsCantidunidadPlse")}
-          />
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Cantidad programada"
+              {...register("orsCantidunidadPlse", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="Valor unidad"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValorunidadPlse)}
-            helperText={errors.orsValorunidadPlse?.message}
-            {...register("orsValorunidadPlse")}
-          />
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Valor unidad"
+              {...register("orsValorunidadPlse", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="Valor total"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValortotalPlse)}
-            helperText={errors.orsValortotalPlse?.message}
-            {...register("orsValortotalPlse")}
-          />
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Valor total"
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+              {...register("orsValortotalPlse", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="Cantidad ejecutada"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsEjecutunidadPlse)}
-            helperText={errors.orsEjecutunidadPlse?.message}
-            {...register("orsEjecutunidadPlse")}
-          />
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Cantidad ejecutada"
+              {...register("orsEjecutunidadPlse", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="Valor ejecutado"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValorejecutPlse)}
-            helperText={errors.orsValorejecutPlse?.message}
-            {...register("orsValorejecutPlse")}
-          />
-        </Box>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Valor ejecutado"
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+              {...register("orsValorejecutPlse", { valueAsNumber: true })}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              label="Tipo registro"
+              {...register("orsTiporegistPlse")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              label="Estado"
+              {...register("orsEstadoregPlse")}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }

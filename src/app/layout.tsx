@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import ThemeRegistry from "../theme/ThemeRegistry";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Prodeinc",
-  description: "Dashboard de control de obras civiles"
+  title: "Prodeinc - Control de Obras",
+  description: "Plataforma de control de obras civiles"
 };
 
 export default function RootLayout({
   children
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="es">
       <body>

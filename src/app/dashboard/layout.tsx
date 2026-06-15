@@ -1,12 +1,11 @@
-import { ReactNode } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardLayout } from "../../components/layout/DashboardLayout";
 
-interface DashboardRootLayoutProps {
-  children: ReactNode;
+interface DashboardAppLayoutProps {
+  children: React.ReactNode;
 }
 
-export default function DashboardRootLayout({
+export default function DashboardAppLayout({
   children
-}: DashboardRootLayoutProps) {
+}: DashboardAppLayoutProps) {
   return <DashboardLayout>{children}</DashboardLayout>;
 }

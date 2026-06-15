@@ -1,87 +1,108 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { UnidadMedidaDto } from "../../types/equipos.types";
 
-const schema = z.object({
-  prvTipunidamedUnme: z.string().min(1, "La key de unidad es obligatoria"),
-  prvDescmedidaUnme: z.string().min(1, "La descripción es obligatoria"),
-  prvEstadoregUnme: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
-
 interface UnidadMedidaFormProps {
+  open: boolean;
   loading?: boolean;
-  onCancel: () => void;
-  onSubmit: (data: UnidadMedidaDto) => void;
+  initialData?: UnidadMedidaDto | null;
+  onClose: () => void;
+  onSubmit: (data: UnidadMedidaDto) => Promise<void> | void;
 }
 
+const defaultValues: UnidadMedidaDto = {
+  prvTipunidamedUnme: "",
+  prvDescmedidaUnme: "",
+  prvEstadoregUnme: "1"
+};
+
 export function UnidadMedidaForm({
+  open,
   loading = false,
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: UnidadMedidaFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      prvTipunidamedUnme: "",
-      prvDescmedidaUnme: "",
-      prvEstadoregUnme: "1"
-    }
+  } = useForm<UnidadMedidaDto>({
+    defaultValues
   });
 
-  const submitForm = (values: FormValues) => {
-    onSubmit({
-      ...values,
-      prvEstadoregUnme: values.prvEstadoregUnme || "1"
-    });
-  };
+  useEffect(() => {
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
-      <DialogContent dividers>
-        <Box sx={{ display: "grid", gap: 2 }}>
-          <TextField
-            label="Key unidad"
-            fullWidth
-            error={Boolean(errors.prvTipunidamedUnme)}
-            helperText={errors.prvTipunidamedUnme?.message}
-            {...register("prvTipunidamedUnme")}
-          />
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar unidad de medida" : "Crear unidad de medida"}
+      </DialogTitle>
 
-          <TextField
-            label="Descripción"
-            fullWidth
-            error={Boolean(errors.prvDescmedidaUnme)}
-            helperText={errors.prvDescmedidaUnme?.message}
-            {...register("prvDescmedidaUnme")}
-          />
-        </Box>
+      <DialogContent dividers>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Código unidad"
+              placeholder="HORA, DIA, KM, M3"
+              {...register("prvTipunidamedUnme", {
+                required: "El código de unidad es obligatorio"
+              })}
+              error={!!errors.prvTipunidamedUnme}
+              helperText={errors.prvTipunidamedUnme?.message}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Estado"
+              {...register("prvEstadoregUnme")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="Descripción"
+              {...register("prvDescmedidaUnme", {
+                required: "La descripción es obligatoria"
+              })}
+              error={!!errors.prvDescmedidaUnme}
+              helperText={errors.prvDescmedidaUnme?.message}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }

@@ -1,12 +1,19 @@
 import { http } from "./apiClient";
-import { ApiResponse } from "../types/common.types";
+import {
+  ApiResponse,
+  PageParams,
+  ChangeStatusRequest,
+  DeleteRequest,
+  buildApiWrapper,
+  buildPageParams
+} from "../types/common.types";
 import {
   ActaModificacionDetalleDto,
   ActaModificacionDto,
   AvanceObraDto,
-    DetalleEquipoOperacionDto,
-    InformeSemanalDto,
-    NovedadDto,
+  DetalleEquipoOperacionDto,
+  InformeSemanalDto,
+  NovedadDto,
   OrdenServicioDto,
   PlanSemanalDto,
   PlanTrabajoDto,
@@ -17,443 +24,508 @@ import {
   SitioPuntoDto
 } from "../types/controlObras.types";
 
+function changeStatus<T>(baseUrl: string, recPKey: number, recEstreg: string) {
+  return http.post<ApiResponse<T>>(`${baseUrl}/changestatus`, [
+    {
+      recPKey,
+      recEstreg
+    } satisfies ChangeStatusRequest
+  ]);
+}
+
+function deleteByBody<T>(baseUrl: string, recPKey: number) {
+  return http.post<ApiResponse<T>>(`${baseUrl}/delete`, [
+    {
+      recPKey
+    } satisfies DeleteRequest
+  ]);
+}
+
+const BASE_CONTROL = "/api/control-obras";
+
+const BASE_ORDENES = `${BASE_CONTROL}/ordenes`;
+const BASE_SITIOS = `${BASE_CONTROL}/sitios`;
+const BASE_PROYECCION = `${BASE_CONTROL}/proyeccion-semanal`;
+const BASE_PLANES = `${BASE_CONTROL}/planes`;
+const BASE_PLANES_SEMANALES = `${BASE_CONTROL}/planes-semanales`;
+const BASE_REPORTES_DIARIOS = `${BASE_CONTROL}/reportes-diarios`;
+const BASE_RESUMEN_EQUIPOS = `${BASE_CONTROL}/resumen-equipos`;
+const BASE_REPORTES_OPERACION = `${BASE_CONTROL}/reportes-operacion`;
+const BASE_DETALLES_EQUIPOS = `${BASE_CONTROL}/detalles-equipos-operacion`;
+const BASE_NOVEDADES = `${BASE_CONTROL}/novedades`;
+const BASE_AVANCES = `${BASE_CONTROL}/avances`;
+const BASE_INFORMES = `${BASE_CONTROL}/informes-semanales`;
+const BASE_ACTAS = `${BASE_CONTROL}/actas-modificacion`;
+const BASE_ACTAS_DETALLES = `${BASE_CONTROL}/actas-modificacion-detalles`;
+
 export const controlObrasService = {
   ordenes: {
-    getPages: (params?: Record<string, unknown>) =>
-      http.get<ApiResponse<OrdenServicioDto>>(
-        "/api/control-obras/ordenes/pages",
-        { params }
-      ),
+    health: () => http.get<string>(`${BASE_ORDENES}/health`),
+
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<OrdenServicioDto>>(`${BASE_ORDENES}/pages`, {
+        params: buildPageParams(params)
+      }),
+
+    get: (id: number) =>
+      http.get<OrdenServicioDto>(`${BASE_ORDENES}/get/${id}`),
 
     getByKey: (ordenKey: string) =>
-      http.get<ApiResponse<OrdenServicioDto>>(
-        "/api/control-obras/ordenes/by-key",
-        { params: { ordenKey } }
-      ),
+      http.get<ApiResponse<OrdenServicioDto>>(`${BASE_ORDENES}/by-key`, {
+        params: { ordenKey }
+      }),
 
     getByEstado: (estado: string) =>
-      http.get<ApiResponse<OrdenServicioDto>>(
-        "/api/control-obras/ordenes/by-estado",
-        { params: { estado } }
-      ),
+      http.get<ApiResponse<OrdenServicioDto>>(`${BASE_ORDENES}/by-estado`, {
+        params: { estado }
+      }),
 
     create: (data: OrdenServicioDto) =>
       http.post<ApiResponse<OrdenServicioDto>>(
-        "/api/control-obras/ordenes/create",
-        data
+        `${BASE_ORDENES}/create`,
+        buildApiWrapper(data)
       ),
 
     update: (id: number, data: OrdenServicioDto) =>
       http.put<ApiResponse<OrdenServicioDto>>(
-        `/api/control-obras/ordenes/update/${id}`,
-        data
+        `${BASE_ORDENES}/update/${id}`,
+        buildApiWrapper(data)
       ),
 
-    changeStatus: (id: number, estado: string) =>
-      http.patch<ApiResponse<OrdenServicioDto>>(
-        `/api/control-obras/ordenes/changestatus/${id}`,
-        null,
-        { params: { estado } }
-      )
-  },
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<OrdenServicioDto>(BASE_ORDENES, recPKey, recEstreg),
 
-  resumenEquipos: {
-    getPages: (params?: Record<string, unknown>) =>
-      http.get<ApiResponse<ResumenEquipoDto>>(
-        "/api/control-obras/resumen-equipos/pages",
-        { params }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<ResumenEquipoDto>>(
-        "/api/control-obras/resumen-equipos/by-orden",
-        { params: { ordenKey } }
-      ),
-
-    create: (data: ResumenEquipoDto) =>
-      http.post<ApiResponse<ResumenEquipoDto>>(
-        "/api/control-obras/resumen-equipos/create",
-        data
-      )
+    delete: (recPKey: number) =>
+      deleteByBody<OrdenServicioDto>(BASE_ORDENES, recPKey)
   },
 
   sitios: {
-    getPages: (params?: Record<string, unknown>) =>
-      http.get<ApiResponse<SitioPuntoDto>>(
-        "/api/control-obras/sitios/pages",
-        { params }
-      ),
+    health: () => http.get<string>(`${BASE_SITIOS}/health`),
+
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<SitioPuntoDto>>(`${BASE_SITIOS}/pages`, {
+        params: buildPageParams(params)
+      }),
 
     getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<SitioPuntoDto>>(
-        "/api/control-obras/sitios/by-orden",
-        { params: { ordenKey } }
-      ),
+      http.get<ApiResponse<SitioPuntoDto>>(`${BASE_SITIOS}/by-orden`, {
+        params: { ordenKey }
+      }),
 
     create: (data: SitioPuntoDto) =>
       http.post<ApiResponse<SitioPuntoDto>>(
-        "/api/control-obras/sitios/create",
-        data
-      )
+        `${BASE_SITIOS}/create`,
+        buildApiWrapper(data)
+      ),
+
+    update: (id: number, data: SitioPuntoDto) =>
+      http.put<ApiResponse<SitioPuntoDto>>(
+        `${BASE_SITIOS}/update/${id}`,
+        buildApiWrapper(data)
+      ),
+
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<SitioPuntoDto>(BASE_SITIOS, recPKey, recEstreg),
+
+    delete: (recPKey: number) =>
+      deleteByBody<SitioPuntoDto>(BASE_SITIOS, recPKey)
   },
 
-    proyeccionSemanal: {
-    getPages: (params?: Record<string, unknown>) =>
+  proyeccionSemanal: {
+    health: () => http.get<string>(`${BASE_PROYECCION}/health`),
+
+    getPages: (params?: PageParams) =>
       http.get<ApiResponse<ProyeccionSemanalDto>>(
-        "/api/control-obras/proyeccion-semanal/pages",
-        { params }
+        `${BASE_PROYECCION}/pages`,
+        { params: buildPageParams(params) }
       ),
 
     getByOrden: (ordenKey: string) =>
       http.get<ApiResponse<ProyeccionSemanalDto>>(
-        "/api/control-obras/proyeccion-semanal/by-orden",
+        `${BASE_PROYECCION}/by-orden`,
         { params: { ordenKey } }
       ),
 
     create: (data: ProyeccionSemanalDto) =>
       http.post<ApiResponse<ProyeccionSemanalDto>>(
-        "/api/control-obras/proyeccion-semanal/create",
-        data
-      )
+        `${BASE_PROYECCION}/create`,
+        buildApiWrapper(data)
+      ),
+
+    update: (id: number, data: ProyeccionSemanalDto) =>
+      http.put<ApiResponse<ProyeccionSemanalDto>>(
+        `${BASE_PROYECCION}/update/${id}`,
+        buildApiWrapper(data)
+      ),
+
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<ProyeccionSemanalDto>(
+        BASE_PROYECCION,
+        recPKey,
+        recEstreg
+      ),
+
+    delete: (recPKey: number) =>
+      deleteByBody<ProyeccionSemanalDto>(BASE_PROYECCION, recPKey)
   },
 
   planes: {
-    getPages: (params?: Record<string, unknown>) =>
-      http.get<ApiResponse<PlanTrabajoDto>>(
-        "/api/control-obras/planes/pages",
-        { params }
-      ),
+    health: () => http.get<string>(`${BASE_PLANES}/health`),
+
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<PlanTrabajoDto>>(`${BASE_PLANES}/pages`, {
+        params: buildPageParams(params)
+      }),
 
     getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<PlanTrabajoDto>>(
-        "/api/control-obras/planes/by-orden",
-        { params: { ordenKey } }
-      ),
+      http.get<ApiResponse<PlanTrabajoDto>>(`${BASE_PLANES}/by-orden`, {
+        params: { ordenKey }
+      }),
+
+    getByPunto: (puntoKey: string) =>
+      http.get<ApiResponse<PlanTrabajoDto>>(`${BASE_PLANES}/by-punto`, {
+        params: { puntoKey }
+      }),
 
     create: (data: PlanTrabajoDto) =>
       http.post<ApiResponse<PlanTrabajoDto>>(
-        "/api/control-obras/planes/create",
-        data
-      )
+        `${BASE_PLANES}/create`,
+        buildApiWrapper(data)
+      ),
+
+    update: (id: number, data: PlanTrabajoDto) =>
+      http.put<ApiResponse<PlanTrabajoDto>>(
+        `${BASE_PLANES}/update/${id}`,
+        buildApiWrapper(data)
+      ),
+
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<PlanTrabajoDto>(BASE_PLANES, recPKey, recEstreg),
+
+    delete: (recPKey: number) =>
+      deleteByBody<PlanTrabajoDto>(BASE_PLANES, recPKey)
   },
+
   planesSemanales: {
-    getPages: (params?: Record<string, unknown>) =>
+    health: () => http.get<string>(`${BASE_PLANES_SEMANALES}/health`),
+
+    getPages: (params?: PageParams) =>
       http.get<ApiResponse<PlanSemanalDto>>(
-        "/api/control-obras/planes-semanales/pages",
-        { params }
+        `${BASE_PLANES_SEMANALES}/pages`,
+        { params: buildPageParams(params) }
+      ),
+
+    getByOrden: (ordenKey: string) =>
+      http.get<ApiResponse<PlanSemanalDto>>(
+        `${BASE_PLANES_SEMANALES}/by-orden`,
+        { params: { ordenKey } }
       ),
 
     getByPlan: (planKey: string) =>
       http.get<ApiResponse<PlanSemanalDto>>(
-        "/api/control-obras/planes-semanales/by-plan",
+        `${BASE_PLANES_SEMANALES}/by-plan`,
         { params: { planKey } }
       ),
 
     create: (data: PlanSemanalDto) =>
       http.post<ApiResponse<PlanSemanalDto>>(
-        "/api/control-obras/planes-semanales/create",
-        data
-      )
+        `${BASE_PLANES_SEMANALES}/create`,
+        buildApiWrapper(data)
+      ),
+
+    update: (id: number, data: PlanSemanalDto) =>
+      http.put<ApiResponse<PlanSemanalDto>>(
+        `${BASE_PLANES_SEMANALES}/update/${id}`,
+        buildApiWrapper(data)
+      ),
+
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<PlanSemanalDto>(
+        BASE_PLANES_SEMANALES,
+        recPKey,
+        recEstreg
+      ),
+
+    delete: (recPKey: number) =>
+      deleteByBody<PlanSemanalDto>(BASE_PLANES_SEMANALES, recPKey)
   },
-    reportesDiarios: {
-    getPages: (params?: Record<string, unknown>) =>
+
+  reportesDiarios: {
+    health: () => http.get<string>(`${BASE_REPORTES_DIARIOS}/health`),
+
+    getPages: (params?: PageParams) =>
       http.get<ApiResponse<ReporteDiarioDto>>(
-        "/api/control-obras/reportes-diarios/pages",
-        { params }
+        `${BASE_REPORTES_DIARIOS}/pages`,
+        { params: buildPageParams(params) }
+      ),
+
+    getByOrden: (ordenKey: string) =>
+      http.get<ApiResponse<ReporteDiarioDto>>(
+        `${BASE_REPORTES_DIARIOS}/by-orden`,
+        { params: { ordenKey } }
       ),
 
     getByPlanSemanal: (planSemanalKey: string) =>
       http.get<ApiResponse<ReporteDiarioDto>>(
-        "/api/control-obras/reportes-diarios/by-plan-semanal",
+        `${BASE_REPORTES_DIARIOS}/by-plan-semanal`,
         { params: { planSemanalKey } }
       ),
 
     create: (data: ReporteDiarioDto) =>
       http.post<ApiResponse<ReporteDiarioDto>>(
-        "/api/control-obras/reportes-diarios/create",
-        data
-      )
+        `${BASE_REPORTES_DIARIOS}/create`,
+        buildApiWrapper(data)
+      ),
+
+    update: (id: number, data: ReporteDiarioDto) =>
+      http.put<ApiResponse<ReporteDiarioDto>>(
+        `${BASE_REPORTES_DIARIOS}/update/${id}`,
+        buildApiWrapper(data)
+      ),
+
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<ReporteDiarioDto>(
+        BASE_REPORTES_DIARIOS,
+        recPKey,
+        recEstreg
+      ),
+
+    delete: (recPKey: number) =>
+      deleteByBody<ReporteDiarioDto>(BASE_REPORTES_DIARIOS, recPKey)
   },
 
-  novedades: {
-    getPages: (params?: Record<string, unknown>) =>
-      http.get<ApiResponse<NovedadDto>>(
-        "/api/control-obras/novedades/pages",
-        { params }
+  resumenEquipos: {
+    health: () => http.get<string>(`${BASE_RESUMEN_EQUIPOS}/health`),
+
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<ResumenEquipoDto>>(
+        `${BASE_RESUMEN_EQUIPOS}/pages`,
+        { params: buildPageParams(params) }
       ),
 
     getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<NovedadDto>>(
-        "/api/control-obras/novedades/by-orden",
+      http.get<ApiResponse<ResumenEquipoDto>>(
+        `${BASE_RESUMEN_EQUIPOS}/by-orden`,
         { params: { ordenKey } }
       ),
 
-    create: (data: NovedadDto) =>
-      http.post<ApiResponse<NovedadDto>>(
-        "/api/control-obras/novedades/create",
-        data
+    create: (data: ResumenEquipoDto) =>
+      http.post<ApiResponse<ResumenEquipoDto>>(
+        `${BASE_RESUMEN_EQUIPOS}/create`,
+        buildApiWrapper(data)
       )
   },
-    avances: {
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<AvanceObraDto>>(
-        "/api/control-obras/avances/by-orden",
-        { params: { ordenKey } }
-      ),
 
-    getByPlan: (planKey: string) =>
-      http.get<ApiResponse<AvanceObraDto>>(
-        "/api/control-obras/avances/by-plan",
-        { params: { planKey } }
-      ),
-
-    getByPlanSemanal: (planSemanalKey: string) =>
-      http.get<ApiResponse<AvanceObraDto>>(
-        "/api/control-obras/avances/by-plan-semanal",
-        { params: { planSemanalKey } }
-      )
-  },
   reportesOperacion: {
-    getPages: (params?: Record<string, unknown>) =>
+    getPages: (params?: PageParams) =>
       http.get<ApiResponse<ReporteOperacionDto>>(
-        "/api/control-obras/reportes-operacion/pages",
-        { params }
+        `${BASE_REPORTES_OPERACION}/pages`,
+        { params: buildPageParams(params) }
       ),
 
     getByKey: (reporteOperacionKey: string) =>
-      http.get<ReporteOperacionDto>(
-        "/api/control-obras/reportes-operacion/by-key",
-        { params: { reporteOperacionKey } }
-      ),
+      http.get<ReporteOperacionDto>(`${BASE_REPORTES_OPERACION}/by-key`, {
+        params: { reporteOperacionKey }
+      }),
 
     getByOrden: (ordenKey: string) =>
-      http.get<ReporteOperacionDto[]>(
-        "/api/control-obras/reportes-operacion/by-orden",
-        { params: { ordenKey } }
-      ),
-
-    getByPlanSemanal: (planSemanalKey: string) =>
-      http.get<ReporteOperacionDto[]>(
-        "/api/control-obras/reportes-operacion/by-plan-semanal",
-        { params: { planSemanalKey } }
-      ),
-
-    getByPunto: (puntoKey: string) =>
-      http.get<ReporteOperacionDto[]>(
-        "/api/control-obras/reportes-operacion/by-punto",
-        { params: { puntoKey } }
-      ),
+      http.get<ReporteOperacionDto[]>(`${BASE_REPORTES_OPERACION}/by-orden`, {
+        params: { ordenKey }
+      }),
 
     create: (data: ReporteOperacionDto) =>
-      http.post<ReporteOperacionDto>(
-        "/api/control-obras/reportes-operacion/create",
-        data
+      http.post<ApiResponse<ReporteOperacionDto>>(
+        `${BASE_REPORTES_OPERACION}/create`,
+        buildApiWrapper(data)
       ),
 
     update: (id: number, data: ReporteOperacionDto) =>
-      http.put<ReporteOperacionDto>(
-        `/api/control-obras/reportes-operacion/update/${id}`,
-        data
+      http.put<ApiResponse<ReporteOperacionDto>>(
+        `${BASE_REPORTES_OPERACION}/update/${id}`,
+        buildApiWrapper(data)
       ),
 
-    changeStatus: (id: number, estado: string) =>
-      http.patch<ReporteOperacionDto>(
-        `/api/control-obras/reportes-operacion/changestatus/${id}`,
-        null,
-        { params: { estado } }
-      )
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<ReporteOperacionDto>(
+        BASE_REPORTES_OPERACION,
+        recPKey,
+        recEstreg
+      ),
+
+    delete: (recPKey: number) =>
+      deleteByBody<ReporteOperacionDto>(BASE_REPORTES_OPERACION, recPKey)
   },
 
   detallesEquiposOperacion: {
-    getPages: (params?: Record<string, unknown>) =>
+    health: () => http.get<string>(`${BASE_DETALLES_EQUIPOS}/health`),
+
+    getPages: (params?: PageParams) =>
       http.get<ApiResponse<DetalleEquipoOperacionDto>>(
-        "/api/control-obras/detalles-equipos-operacion/pages",
-        { params }
-      ),
-
-    getByKey: (detalleEquipoOperacionKey: string) =>
-      http.get<DetalleEquipoOperacionDto>(
-        "/api/control-obras/detalles-equipos-operacion/by-key",
-        { params: { detalleEquipoOperacionKey } }
-      ),
-
-    getByReporteOperacion: (reporteOperacionKey: string) =>
-      http.get<DetalleEquipoOperacionDto[]>(
-        "/api/control-obras/detalles-equipos-operacion/by-reporte-operacion",
-        { params: { reporteOperacionKey } }
+        `${BASE_DETALLES_EQUIPOS}/pages`,
+        { params: buildPageParams(params) }
       ),
 
     getByOrden: (ordenKey: string) =>
       http.get<DetalleEquipoOperacionDto[]>(
-        "/api/control-obras/detalles-equipos-operacion/by-orden",
+        `${BASE_DETALLES_EQUIPOS}/by-orden`,
         { params: { ordenKey } }
-      ),
-
-    getByPlanSemanal: (planSemanalKey: string) =>
-      http.get<DetalleEquipoOperacionDto[]>(
-        "/api/control-obras/detalles-equipos-operacion/by-plan-semanal",
-        { params: { planSemanalKey } }
       ),
 
     getByEquipo: (equipoKey: string) =>
       http.get<DetalleEquipoOperacionDto[]>(
-        "/api/control-obras/detalles-equipos-operacion/by-equipo",
+        `${BASE_DETALLES_EQUIPOS}/by-equipo`,
         { params: { equipoKey } }
       ),
 
     create: (data: DetalleEquipoOperacionDto) =>
-      http.post<DetalleEquipoOperacionDto>(
-        "/api/control-obras/detalles-equipos-operacion/create",
-        data
+      http.post<ApiResponse<DetalleEquipoOperacionDto>>(
+        `${BASE_DETALLES_EQUIPOS}/create`,
+        buildApiWrapper(data)
       ),
 
     update: (id: number, data: DetalleEquipoOperacionDto) =>
-      http.put<DetalleEquipoOperacionDto>(
-        `/api/control-obras/detalles-equipos-operacion/update/${id}`,
-        data
+      http.put<ApiResponse<DetalleEquipoOperacionDto>>(
+        `${BASE_DETALLES_EQUIPOS}/update/${id}`,
+        buildApiWrapper(data)
       ),
 
-    changeStatus: (id: number, estado: string) =>
-      http.patch<DetalleEquipoOperacionDto>(
-        `/api/control-obras/detalles-equipos-operacion/changestatus/${id}`,
-        null,
-        { params: { estado } }
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<DetalleEquipoOperacionDto>(
+        BASE_DETALLES_EQUIPOS,
+        recPKey,
+        recEstreg
+      ),
+
+    delete: (recPKey: number) =>
+      deleteByBody<DetalleEquipoOperacionDto>(
+        BASE_DETALLES_EQUIPOS,
+        recPKey
       )
+  },
+
+  novedades: {
+    health: () => http.get<string>(`${BASE_NOVEDADES}/health`),
+
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<NovedadDto>>(`${BASE_NOVEDADES}/pages`, {
+        params: buildPageParams(params)
+      }),
+
+    getByOrden: (ordenKey: string) =>
+      http.get<ApiResponse<NovedadDto>>(`${BASE_NOVEDADES}/by-orden`, {
+        params: { ordenKey }
+      }),
+
+    getByRegistroBase: (registroBase: string) =>
+      http.get<ApiResponse<NovedadDto>>(
+        `${BASE_NOVEDADES}/by-registro-base`,
+        { params: { registroBase } }
+      ),
+
+    create: (data: NovedadDto) =>
+      http.post<ApiResponse<NovedadDto>>(
+        `${BASE_NOVEDADES}/create`,
+        buildApiWrapper(data)
+      ),
+
+    update: (id: number, data: NovedadDto) =>
+      http.put<ApiResponse<NovedadDto>>(
+        `${BASE_NOVEDADES}/update/${id}`,
+        buildApiWrapper(data)
+      ),
+
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<NovedadDto>(BASE_NOVEDADES, recPKey, recEstreg),
+
+    delete: (recPKey: number) =>
+      deleteByBody<NovedadDto>(BASE_NOVEDADES, recPKey)
+  },
+
+  avances: {
+    health: () => http.get<string>(`${BASE_AVANCES}/health`),
+
+    getByOrden: (ordenKey: string) =>
+      http.get<ApiResponse<AvanceObraDto>>(`${BASE_AVANCES}/by-orden`, {
+        params: { ordenKey }
+      }),
+
+    getByPlan: (planKey: string) =>
+      http.get<ApiResponse<AvanceObraDto>>(`${BASE_AVANCES}/by-plan`, {
+        params: { planKey }
+      }),
+
+    getByPlanSemanal: (planSemanalKey: string) =>
+      http.get<ApiResponse<AvanceObraDto>>(
+        `${BASE_AVANCES}/by-plan-semanal`,
+        { params: { planSemanalKey } }
+      ),
+
+    getOrdenConsolidado: (ordenKey: string) =>
+      http.get<ApiResponse<AvanceObraDto>>(`${BASE_AVANCES}/orden/${ordenKey}`)
   },
 
   informesSemanales: {
-    getPages: (params?: Record<string, unknown>) =>
-      http.get<ApiResponse<InformeSemanalDto>>(
-        "/api/control-obras/informes-semanales/pages",
-        { params }
-      ),
-
-    getByKey: (informeSemanalKey: string) =>
-      http.get<InformeSemanalDto>(
-        "/api/control-obras/informes-semanales/by-key",
-        { params: { informeSemanalKey } }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<InformeSemanalDto[]>(
-        "/api/control-obras/informes-semanales/by-orden",
-        { params: { ordenKey } }
-      ),
-
-    getBySemana: (semana: number) =>
-      http.get<InformeSemanalDto[]>(
-        "/api/control-obras/informes-semanales/by-semana",
-        { params: { semana } }
-      ),
-
-    create: (data: InformeSemanalDto) =>
-      http.post<InformeSemanalDto>(
-        "/api/control-obras/informes-semanales/create",
-        data
-      ),
-
-    update: (id: number, data: InformeSemanalDto) =>
-      http.put<InformeSemanalDto>(
-        `/api/control-obras/informes-semanales/update/${id}`,
-        data
-      ),
-
-    changeStatus: (id: number, estado: string) =>
-      http.patch<InformeSemanalDto>(
-        `/api/control-obras/informes-semanales/changestatus/${id}`,
-        null,
-        { params: { estado } }
-      )
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<InformeSemanalDto>>(`${BASE_INFORMES}/pages`, {
+        params: buildPageParams(params)
+      })
   },
 
   actasModificacion: {
-    getPages: (params?: Record<string, unknown>) =>
-      http.get<ApiResponse<ActaModificacionDto>>(
-        "/api/control-obras/actas-modificacion/pages",
-        { params }
-      ),
-
-    getByKey: (actaModificacionKey: string) =>
-      http.get<ActaModificacionDto>(
-        "/api/control-obras/actas-modificacion/by-key",
-        { params: { actaModificacionKey } }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<ActaModificacionDto[]>(
-        "/api/control-obras/actas-modificacion/by-orden",
-        { params: { ordenKey } }
-      ),
-
-    getByEstadoActa: (estadoActa: string) =>
-      http.get<ActaModificacionDto[]>(
-        "/api/control-obras/actas-modificacion/by-estado-acta",
-        { params: { estadoActa } }
-      ),
+    getPages: (params?: PageParams) =>
+      http.get<ApiResponse<ActaModificacionDto>>(`${BASE_ACTAS}/pages`, {
+        params: buildPageParams(params)
+      }),
 
     create: (data: ActaModificacionDto) =>
-      http.post<ActaModificacionDto>(
-        "/api/control-obras/actas-modificacion/create",
-        data
+      http.post<ApiResponse<ActaModificacionDto>>(
+        `${BASE_ACTAS}/create`,
+        buildApiWrapper(data)
       ),
 
     update: (id: number, data: ActaModificacionDto) =>
-      http.put<ActaModificacionDto>(
-        `/api/control-obras/actas-modificacion/update/${id}`,
-        data
+      http.put<ApiResponse<ActaModificacionDto>>(
+        `${BASE_ACTAS}/update/${id}`,
+        buildApiWrapper(data)
       ),
 
-    changeStatus: (id: number, estado: string) =>
-      http.patch<ActaModificacionDto>(
-        `/api/control-obras/actas-modificacion/changestatus/${id}`,
-        null,
-        { params: { estado } }
-      )
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<ActaModificacionDto>(BASE_ACTAS, recPKey, recEstreg),
+
+    delete: (recPKey: number) =>
+      deleteByBody<ActaModificacionDto>(BASE_ACTAS, recPKey)
   },
 
   actasModificacionDetalles: {
-    getPages: (params?: Record<string, unknown>) =>
+    getPages: (params?: PageParams) =>
       http.get<ApiResponse<ActaModificacionDetalleDto>>(
-        "/api/control-obras/actas-modificacion-detalles/pages",
-        { params }
-      ),
-
-    getByKey: (detalleActaModificacionKey: string) =>
-      http.get<ActaModificacionDetalleDto>(
-        "/api/control-obras/actas-modificacion-detalles/by-key",
-        { params: { detalleActaModificacionKey } }
-      ),
-
-    getByActa: (actaModificacionKey: string) =>
-      http.get<ActaModificacionDetalleDto[]>(
-        "/api/control-obras/actas-modificacion-detalles/by-acta",
-        { params: { actaModificacionKey } }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<ActaModificacionDetalleDto[]>(
-        "/api/control-obras/actas-modificacion-detalles/by-orden",
-        { params: { ordenKey } }
+        `${BASE_ACTAS_DETALLES}/pages`,
+        { params: buildPageParams(params) }
       ),
 
     create: (data: ActaModificacionDetalleDto) =>
-      http.post<ActaModificacionDetalleDto>(
-        "/api/control-obras/actas-modificacion-detalles/create",
-        data
+      http.post<ApiResponse<ActaModificacionDetalleDto>>(
+        `${BASE_ACTAS_DETALLES}/create`,
+        buildApiWrapper(data)
       ),
 
     update: (id: number, data: ActaModificacionDetalleDto) =>
-      http.put<ActaModificacionDetalleDto>(
-        `/api/control-obras/actas-modificacion-detalles/update/${id}`,
-        data
+      http.put<ApiResponse<ActaModificacionDetalleDto>>(
+        `${BASE_ACTAS_DETALLES}/update/${id}`,
+        buildApiWrapper(data)
       ),
 
-    changeStatus: (id: number, estado: string) =>
-      http.patch<ActaModificacionDetalleDto>(
-        `/api/control-obras/actas-modificacion-detalles/changestatus/${id}`,
-        null,
-        { params: { estado } }
-      )
-  }  
+    changeStatus: (recPKey: number, recEstreg: string) =>
+      changeStatus<ActaModificacionDetalleDto>(
+        BASE_ACTAS_DETALLES,
+        recPKey,
+        recEstreg
+      ),
 
+    delete: (recPKey: number) =>
+      deleteByBody<ActaModificacionDetalleDto>(
+        BASE_ACTAS_DETALLES,
+        recPKey
+      )
+  }
 };

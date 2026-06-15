@@ -1,11 +1,10 @@
 "use client";
 
 import { Box } from "@mui/material";
-import type { ReactNode } from "react";
 
 interface PageToolbarProps {
-  left?: ReactNode;
-  right?: ReactNode;
+  left?: React.ReactNode;
+  right?: React.ReactNode;
 }
 
 export function PageToolbar({ left, right }: PageToolbarProps) {
@@ -13,32 +12,29 @@ export function PageToolbar({ left, right }: PageToolbarProps) {
     <Box
       sx={{
         mb: 2,
-        p: 2,
-        backgroundColor: "#FFFFFF",
-        border: "1px solid #EEF2F7",
+        p: 1.5,
         borderRadius: 4,
+        bgcolor: "#ffffff",
+        border: "1px solid",
+        borderColor: "divider",
         display: "flex",
-        flexDirection: {
-          xs: "column",
-          md: "row"
-        },
+        flexDirection: { xs: "column", sm: "row" },
+        alignItems: { xs: "stretch", sm: "center" },
         justifyContent: "space-between",
-        alignItems: {
-          xs: "stretch",
-          md: "center"
-        },
-        gap: 2
+        gap: 1.5
       }}
     >
       <Box
         sx={{
-          display: "flex",
-          flex: 1,
-          flexDirection: {
-            xs: "column",
-            md: "row"
+          minWidth: { xs: "100%", sm: 260 },
+          maxWidth: { xs: "100%", sm: 320 },
+          "& .MuiTextField-root": {
+            width: "100%"
           },
-          gap: 1.5
+          "& .MuiInputBase-root": {
+            borderRadius: 3,
+            height: 44
+          }
         }}
       >
         {left}
@@ -47,11 +43,13 @@ export function PageToolbar({ left, right }: PageToolbarProps) {
       <Box
         sx={{
           display: "flex",
-          flexDirection: {
-            xs: "column",
-            md: "row"
-          },
-          gap: 1.5
+          justifyContent: { xs: "flex-start", sm: "flex-end" },
+          "& .MuiButton-root": {
+            borderRadius: 3,
+            textTransform: "none",
+            fontWeight: 800,
+            height: 42
+          }
         }}
       >
         {right}

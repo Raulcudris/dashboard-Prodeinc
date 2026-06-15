@@ -1,47 +1,39 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { TipoEquipoDto } from "../../types/equipos.types";
 
-const schema = z.object({
-  prvTipoequipoTieq: z.string().min(1, "La key del tipo de equipo es obligatoria"),
-  prvDescripcionTieq: z.string().min(1, "La descripción es obligatoria"),
-  prvIdentifkeyUnme: z.string().min(1, "La unidad de medida es obligatoria"),
-  prvTiporegistTieq: z.string().optional(),
-  prvEstadoregTieq: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
-
 interface TipoEquipoFormProps {
-  initialData?: TipoEquipoDto | null;
+  open: boolean;
   loading?: boolean;
-  onCancel: () => void;
-  onSubmit: (data: TipoEquipoDto) => void;
+  initialData?: TipoEquipoDto | null;
+  onClose: () => void;
+  onSubmit: (data: TipoEquipoDto) => Promise<void> | void;
 }
 
-const defaultValues: FormValues = {
+const defaultValues: TipoEquipoDto = {
   prvTipoequipoTieq: "",
-  prvDescripcionTieq: "",
   prvIdentifkeyUnme: "",
+  prvDescripcionTieq: "",
   prvTiporegistTieq: "1",
   prvEstadoregTieq: "1"
 };
 
 export function TipoEquipoForm({
-  initialData,
+  open,
   loading = false,
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: TipoEquipoFormProps) {
   const {
@@ -49,73 +41,91 @@ export function TipoEquipoForm({
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  } = useForm<TipoEquipoDto>({
     defaultValues
   });
 
   useEffect(() => {
-    if (initialData) {
-      reset({
-        prvTipoequipoTieq: initialData.prvTipoequipoTieq ?? "",
-        prvDescripcionTieq: initialData.prvDescripcionTieq ?? "",
-        prvIdentifkeyUnme: initialData.prvIdentifkeyUnme ?? "",
-        prvTiporegistTieq: initialData.prvTiporegistTieq ?? "1",
-        prvEstadoregTieq: initialData.prvEstadoregTieq ?? "1"
-      });
-    } else {
-      reset(defaultValues);
-    }
-  }, [initialData, reset]);
-
-  const submitForm = (values: FormValues) => {
-    onSubmit({
-      ...values,
-      prvTiporegistTieq: values.prvTiporegistTieq || "1",
-      prvEstadoregTieq: values.prvEstadoregTieq || "1"
-    });
-  };
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar tipo de equipo" : "Crear tipo de equipo"}
+      </DialogTitle>
+
       <DialogContent dividers>
-        <Box sx={{ display: "grid", gap: 2 }}>
-          <TextField
-            label="Key tipo equipo"
-            fullWidth
-            disabled={Boolean(initialData)}
-            error={Boolean(errors.prvTipoequipoTieq)}
-            helperText={errors.prvTipoequipoTieq?.message}
-            {...register("prvTipoequipoTieq")}
-          />
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Código tipo equipo"
+              placeholder="EXC, VOL, COM"
+              {...register("prvTipoequipoTieq", {
+                required: "El código del tipo de equipo es obligatorio"
+              })}
+              error={!!errors.prvTipoequipoTieq}
+              helperText={errors.prvTipoequipoTieq?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Descripción"
-            fullWidth
-            error={Boolean(errors.prvDescripcionTieq)}
-            helperText={errors.prvDescripcionTieq?.message}
-            {...register("prvDescripcionTieq")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Unidad de medida"
+              placeholder="HORA, DIA, KM"
+              {...register("prvIdentifkeyUnme", {
+                required: "La unidad de medida es obligatoria"
+              })}
+              error={!!errors.prvIdentifkeyUnme}
+              helperText={errors.prvIdentifkeyUnme?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key unidad de medida"
-            fullWidth
-            error={Boolean(errors.prvIdentifkeyUnme)}
-            helperText={errors.prvIdentifkeyUnme?.message}
-            {...register("prvIdentifkeyUnme")}
-          />
-        </Box>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="Descripción"
+              {...register("prvDescripcionTieq", {
+                required: "La descripción es obligatoria"
+              })}
+              error={!!errors.prvDescripcionTieq}
+              helperText={errors.prvDescripcionTieq?.message}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Tipo registro"
+              {...register("prvTiporegistTieq")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Estado"
+              {...register("prvEstadoregTieq")}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }

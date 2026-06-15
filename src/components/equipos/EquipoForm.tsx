@@ -1,56 +1,43 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
-  MenuItem,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { EquipoDto } from "../../types/equipos.types";
 
-const schema = z.object({
-  prvIdentifkeyInve: z.string().min(1, "La key del equipo es obligatoria"),
-  prvIdentifkeyMprv: z.string().min(1, "El proveedor es obligatorio"),
-  prvTipoequipoTieq: z.string().min(1, "El tipo de equipo es obligatorio"),
-  prvNombrequipoInve: z.string().min(1, "El nombre del equipo es obligatorio"),
-  prvRefermodeloInve: z.string().optional(),
-  prvEquipoestadoInve: z.string().optional(),
-  prvEquipoactivoInve: z.string().optional(),
-  prvEstadoregInve: z.string().optional(),
-  prvDescripcionInve: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
-
 interface EquipoFormProps {
-  initialData?: EquipoDto | null;
+  open: boolean;
   loading?: boolean;
-  onCancel: () => void;
-  onSubmit: (data: EquipoDto) => void;
+  initialData?: EquipoDto | null;
+  onClose: () => void;
+  onSubmit: (data: EquipoDto) => Promise<void> | void;
 }
 
-const defaultValues: FormValues = {
+const defaultValues: EquipoDto = {
   prvIdentifkeyInve: "",
   prvIdentifkeyMprv: "",
   prvTipoequipoTieq: "",
   prvNombrequipoInve: "",
   prvRefermodeloInve: "",
-  prvEquipoestadoInve: "A01",
+  prvEquipoestadoInve: "OPE",
   prvEquipoactivoInve: "1",
   prvEstadoregInve: "1",
   prvDescripcionInve: ""
 };
 
 export function EquipoForm({
-  initialData,
+  open,
   loading = false,
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: EquipoFormProps) {
   const {
@@ -58,143 +45,134 @@ export function EquipoForm({
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  } = useForm<EquipoDto>({
     defaultValues
   });
 
   useEffect(() => {
-    if (initialData) {
-      reset({
-        prvIdentifkeyInve: initialData.prvIdentifkeyInve ?? "",
-        prvIdentifkeyMprv: initialData.prvIdentifkeyMprv ?? "",
-        prvTipoequipoTieq: initialData.prvTipoequipoTieq ?? "",
-        prvNombrequipoInve: initialData.prvNombrequipoInve ?? "",
-        prvRefermodeloInve: initialData.prvRefermodeloInve ?? "",
-        prvEquipoestadoInve: initialData.prvEquipoestadoInve ?? "A01",
-        prvEquipoactivoInve: initialData.prvEquipoactivoInve ?? "1",
-        prvEstadoregInve: initialData.prvEstadoregInve ?? "1",
-        prvDescripcionInve: initialData.prvDescripcionInve ?? ""
-      });
-    } else {
-      reset(defaultValues);
-    }
-  }, [initialData, reset]);
-
-  const submitForm = (values: FormValues) => {
-    onSubmit({
-      ...values,
-      prvEquipoestadoInve: values.prvEquipoestadoInve || "A01",
-      prvEquipoactivoInve: values.prvEquipoactivoInve || "1",
-      prvEstadoregInve: values.prvEstadoregInve || "1"
-    });
-  };
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar equipo / maquinaria" : "Crear equipo / maquinaria"}
+      </DialogTitle>
+
       <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key equipo"
-            fullWidth
-            disabled={Boolean(initialData)}
-            error={Boolean(errors.prvIdentifkeyInve)}
-            helperText={errors.prvIdentifkeyInve?.message}
-            {...register("prvIdentifkeyInve")}
-          />
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Código equipo"
+              placeholder="EQ-0001"
+              {...register("prvIdentifkeyInve", {
+                required: "El código del equipo es obligatorio"
+              })}
+              error={!!errors.prvIdentifkeyInve}
+              helperText={errors.prvIdentifkeyInve?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key proveedor"
-            fullWidth
-            error={Boolean(errors.prvIdentifkeyMprv)}
-            helperText={errors.prvIdentifkeyMprv?.message}
-            {...register("prvIdentifkeyMprv")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Proveedor"
+              placeholder="PRV-0001"
+              {...register("prvIdentifkeyMprv", {
+                required: "El proveedor es obligatorio"
+              })}
+              error={!!errors.prvIdentifkeyMprv}
+              helperText={errors.prvIdentifkeyMprv?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key tipo equipo"
-            fullWidth
-            error={Boolean(errors.prvTipoequipoTieq)}
-            helperText={errors.prvTipoequipoTieq?.message}
-            {...register("prvTipoequipoTieq")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Tipo equipo"
+              placeholder="EXC"
+              {...register("prvTipoequipoTieq", {
+                required: "El tipo de equipo es obligatorio"
+              })}
+              error={!!errors.prvTipoequipoTieq}
+              helperText={errors.prvTipoequipoTieq?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Nombre equipo"
-            fullWidth
-            error={Boolean(errors.prvNombrequipoInve)}
-            helperText={errors.prvNombrequipoInve?.message}
-            {...register("prvNombrequipoInve")}
-          />
+          <Grid size={{ xs: 12, md: 8 }}>
+            <TextField
+              fullWidth
+              label="Nombre equipo"
+              {...register("prvNombrequipoInve", {
+                required: "El nombre del equipo es obligatorio"
+              })}
+              error={!!errors.prvNombrequipoInve}
+              helperText={errors.prvNombrequipoInve?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Referencia / modelo"
-            fullWidth
-            {...register("prvRefermodeloInve")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Referencia / modelo"
+              placeholder="CAT 320"
+              {...register("prvRefermodeloInve")}
+            />
+          </Grid>
 
-          <TextField
-            label="Disponibilidad"
-            fullWidth
-            select
-            defaultValue="1"
-            {...register("prvEquipoactivoInve")}
-          >
-            <MenuItem value="1">Disponible</MenuItem>
-            <MenuItem value="2">Asignado</MenuItem>
-          </TextField>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Estado operativo"
+              placeholder="OPE"
+              {...register("prvEquipoestadoInve")}
+            />
+          </Grid>
 
-          <TextField
-            label="Estado operativo"
-            fullWidth
-            select
-            defaultValue="A01"
-            {...register("prvEquipoestadoInve")}
-          >
-            <MenuItem value="A01">Activo funcional</MenuItem>
-            <MenuItem value="I01">Inactivo por daño</MenuItem>
-          </TextField>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Disponible / activo"
+              placeholder="1"
+              {...register("prvEquipoactivoInve")}
+            />
+          </Grid>
 
-          <TextField
-            label="Estado registro"
-            fullWidth
-            select
-            defaultValue="1"
-            {...register("prvEstadoregInve")}
-          >
-            <MenuItem value="1">Activo</MenuItem>
-            <MenuItem value="2">Inactivo</MenuItem>
-          </TextField>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Estado registro"
+              placeholder="1"
+              {...register("prvEstadoregInve")}
+            />
+          </Grid>
 
-          <TextField
-            label="Descripción"
-            fullWidth
-            multiline
-            minRows={3}
-            sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
-            {...register("prvDescripcionInve")}
-          />
-        </Box>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Descripción"
+              {...register("prvDescripcionInve")}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }

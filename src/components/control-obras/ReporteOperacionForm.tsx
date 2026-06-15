@@ -11,39 +11,38 @@ import {
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { NovedadDto } from "../../types/controlObras.types";
+import { ReporteOperacionDto } from "../../types/controlObras.types";
 
-interface NovedadFormProps {
+interface ReporteOperacionFormProps {
   open: boolean;
   loading?: boolean;
-  initialData?: NovedadDto | null;
+  initialData?: ReporteOperacionDto | null;
   onClose: () => void;
-  onSubmit: (data: NovedadDto) => Promise<void> | void;
+  onSubmit: (data: ReporteOperacionDto) => Promise<void> | void;
 }
 
-const defaultValues: NovedadDto = {
-  orsIdentifkeyNove: "",
+const defaultValues: ReporteOperacionDto = {
+  orsIdentifkeyRope: "",
   orsIdentifkeyOrde: "",
-  orsFechreportNove: "",
-  orsTiponovedadNovt: "",
-  orsRegistrbaseNove: "",
-  orsRegistrnoveNove: "",
-  orsEstadoregNove: "1"
+  orsFechareportRope: "",
+  orsObservacionRope: "",
+  orsTiporegistRope: "1",
+  orsEstadoregRope: "1"
 };
 
-export function NovedadForm({
+export function ReporteOperacionForm({
   open,
   loading = false,
   initialData,
   onClose,
   onSubmit
-}: NovedadFormProps) {
+}: ReporteOperacionFormProps) {
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<NovedadDto>({
+  } = useForm<ReporteOperacionDto>({
     defaultValues
   });
 
@@ -52,9 +51,14 @@ export function NovedadForm({
   }, [initialData, reset, open]);
 
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle>
-        {initialData ? "Editar novedad" : "Crear novedad"}
+        {initialData ? "Editar reporte de operación" : "Crear reporte de operación"}
       </DialogTitle>
 
       <DialogContent dividers>
@@ -62,12 +66,13 @@ export function NovedadForm({
           <Grid size={{ xs: 12, md: 6 }}>
             <TextField
               fullWidth
-              label="Código novedad"
-              {...register("orsIdentifkeyNove", {
-                required: "El código de la novedad es obligatorio"
+              label="Código reporte operación"
+              placeholder="ROPE-0001"
+              {...register("orsIdentifkeyRope", {
+                required: "El código del reporte es obligatorio"
               })}
-              error={!!errors.orsIdentifkeyNove}
-              helperText={errors.orsIdentifkeyNove?.message}
+              error={!!errors.orsIdentifkeyRope}
+              helperText={errors.orsIdentifkeyRope?.message}
             />
           </Grid>
 
@@ -75,8 +80,9 @@ export function NovedadForm({
             <TextField
               fullWidth
               label="Orden de servicio"
+              placeholder="ORDE-0001"
               {...register("orsIdentifkeyOrde", {
-                required: "La orden es obligatoria"
+                required: "La orden de servicio es obligatoria"
               })}
               error={!!errors.orsIdentifkeyOrde}
               helperText={errors.orsIdentifkeyOrde?.message}
@@ -87,29 +93,29 @@ export function NovedadForm({
             <TextField
               fullWidth
               type="date"
-              label="Fecha novedad"
+              label="Fecha reporte"
               slotProps={{
                 inputLabel: {
                   shrink: true
                 }
               }}
-              {...register("orsFechreportNove")}
+              {...register("orsFechareportRope")}
             />
           </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
-              label="Tipo novedad"
-              {...register("orsTiponovedadNovt")}
+              label="Tipo registro"
+              {...register("orsTiporegistRope")}
             />
           </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
-              label="Registro base"
-              {...register("orsRegistrbaseNove")}
+              label="Estado"
+              {...register("orsEstadoregRope")}
             />
           </Grid>
 
@@ -118,20 +124,8 @@ export function NovedadForm({
               fullWidth
               multiline
               minRows={4}
-              label="Descripción de la novedad"
-              {...register("orsRegistrnoveNove", {
-                required: "La descripción de la novedad es obligatoria"
-              })}
-              error={!!errors.orsRegistrnoveNove}
-              helperText={errors.orsRegistrnoveNove?.message}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12 }}>
-            <TextField
-              fullWidth
-              label="Estado"
-              {...register("orsEstadoregNove")}
+              label="Observación"
+              {...register("orsObservacionRope")}
             />
           </Grid>
         </Grid>

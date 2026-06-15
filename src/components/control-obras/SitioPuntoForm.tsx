@@ -1,154 +1,167 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { SitioPuntoDto } from "../../types/controlObras.types";
 
-const schema = z.object({
-  orsIdentifkeyPunt: z.string().min(1, "La key del punto es obligatoria"),
-  orsIdentifkeyOrde: z.string().min(1, "La orden es obligatoria"),
-  orsNombresitioPunt: z.string().min(1, "El nombre del sitio es obligatorio"),
-  sisCodproSipr: z.string().optional(),
-  orsGeolatitudePunt: z.coerce.number().optional(),
-  orsGeolongitudePunt: z.coerce.number().optional(),
-  orsPathimagenPunt: z.string().optional(),
-  orsTiporegistPunt: z.string().optional(),
-  orsEstadoregPunt: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
-
 interface SitioPuntoFormProps {
+  open: boolean;
   loading?: boolean;
-  ordenKeyDefault?: string;
-  onCancel: () => void;
-  onSubmit: (data: SitioPuntoDto) => void;
+  initialData?: SitioPuntoDto | null;
+  onClose: () => void;
+  onSubmit: (data: SitioPuntoDto) => Promise<void> | void;
 }
 
+const defaultValues: SitioPuntoDto = {
+  orsIdentifkeyPunt: "",
+  orsIdentifkeyOrde: "",
+  orsNombresitioPunt: "",
+  sisCodproSipr: "",
+  orsGeolatitudePunt: undefined,
+  orsGeolongitudePunt: undefined,
+  orsPathimagenPunt: "",
+  orsTiporegistPunt: "1",
+  orsEstadoregPunt: "1"
+};
+
 export function SitioPuntoForm({
+  open,
   loading = false,
-  ordenKeyDefault = "",
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: SitioPuntoFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      orsIdentifkeyPunt: "",
-      orsIdentifkeyOrde: ordenKeyDefault,
-      orsNombresitioPunt: "",
-      sisCodproSipr: "",
-      orsGeolatitudePunt: 0,
-      orsGeolongitudePunt: 0,
-      orsPathimagenPunt: "",
-      orsTiporegistPunt: "1",
-      orsEstadoregPunt: "1"
-    }
+  } = useForm<SitioPuntoDto>({
+    defaultValues
   });
 
-  const submitForm = (values: FormValues) => {
-    const data: SitioPuntoDto = {
-      orsIdentifkeyPunt: values.orsIdentifkeyPunt,
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde,
-      orsNombresitioPunt: values.orsNombresitioPunt,
-      sisCodproSipr: values.sisCodproSipr || "",
-      orsGeolatitudePunt: Number(values.orsGeolatitudePunt || 0),
-      orsGeolongitudePunt: Number(values.orsGeolongitudePunt || 0),
-      orsPathimagenPunt: values.orsPathimagenPunt || "",
-      orsTiporegistPunt: values.orsTiporegistPunt || "1",
-      orsEstadoregPunt: values.orsEstadoregPunt || "1"
-    };
-
-    onSubmit(data);
-  };
+  useEffect(() => {
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar sitio / punto" : "Crear sitio / punto"}
+      </DialogTitle>
+
       <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key punto"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyPunt)}
-            helperText={errors.orsIdentifkeyPunt?.message}
-            {...register("orsIdentifkeyPunt")}
-          />
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Código punto"
+              {...register("orsIdentifkeyPunt", {
+                required: "El código del punto es obligatorio"
+              })}
+              error={!!errors.orsIdentifkeyPunt}
+              helperText={errors.orsIdentifkeyPunt?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Key orden"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyOrde)}
-            helperText={errors.orsIdentifkeyOrde?.message}
-            {...register("orsIdentifkeyOrde")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Orden de servicio"
+              {...register("orsIdentifkeyOrde", {
+                required: "La orden de servicio es obligatoria"
+              })}
+              error={!!errors.orsIdentifkeyOrde}
+              helperText={errors.orsIdentifkeyOrde?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Nombre sitio"
-            fullWidth
-            error={Boolean(errors.orsNombresitioPunt)}
-            helperText={errors.orsNombresitioPunt?.message}
-            {...register("orsNombresitioPunt")}
-          />
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="Nombre del sitio"
+              {...register("orsNombresitioPunt", {
+                required: "El nombre del sitio es obligatorio"
+              })}
+              error={!!errors.orsNombresitioPunt}
+              helperText={errors.orsNombresitioPunt?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Municipio / código"
-            fullWidth
-            {...register("sisCodproSipr")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Municipio / código geográfico"
+              {...register("sisCodproSipr")}
+            />
+          </Grid>
 
-          <TextField
-            label="Latitud"
-            type="number"
-            fullWidth
-            {...register("orsGeolatitudePunt")}
-          />
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Latitud"
+              {...register("orsGeolatitudePunt", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="Longitud"
-            type="number"
-            fullWidth
-            {...register("orsGeolongitudePunt")}
-          />
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Longitud"
+              {...register("orsGeolongitudePunt", { valueAsNumber: true })}
+            />
+          </Grid>
 
-          <TextField
-            label="URL imagen"
-            fullWidth
-            sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
-            {...register("orsPathimagenPunt")}
-          />
-        </Box>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="URL / ruta imagen"
+              {...register("orsPathimagenPunt")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Tipo registro"
+              {...register("orsTiporegistPunt")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Estado"
+              {...register("orsEstadoregPunt")}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }

@@ -1,57 +1,32 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { ProveedorDto } from "../../types/proveedores.types";
 
-const proveedorSchema = z.object({
-  prvIdentifkeyMprv: z.string().min(1, "La key del proveedor es obligatoria"),
-  prvNumeronitMprv: z.string().min(1, "El NIT es obligatorio"),
-  prvRazonsocialMprv: z.string().min(1, "La razón social es obligatoria"),
-  prvObjetosocialMprv: z.string().optional(),
-  sisTiposociedadTpso: z.string().optional(),
-  sisCodactividadCiiu: z.string().optional(),
-  prvFechconstMprv: z.string().optional(),
-  prvPaginawebMprv: z.string().optional(),
-  prvDireccionMprv: z.string().optional(),
-  prvTelefonoMprv: z.string().optional(),
-  prvCorreoMprv: z
-    .string()
-    .email("Correo inválido")
-    .optional()
-    .or(z.literal("")),
-  sisCodpaiSipa: z.string().optional(),
-  sisIdedptSidp: z.string().optional(),
-  sisCodproSipr: z.string().optional(),
-  prvCodposMprv: z.string().optional(),
-  prvIdentifkeyRelg: z.string().nullable().optional(),
-  prvEstadoregMprv: z.string().optional()
-});
-
-type ProveedorFormValues = z.infer<typeof proveedorSchema>;
-
 interface ProveedorFormProps {
-  initialData?: ProveedorDto | null;
+  open: boolean;
   loading?: boolean;
-  onCancel: () => void;
-  onSubmit: (data: ProveedorDto) => void;
+  initialData?: ProveedorDto | null;
+  onClose: () => void;
+  onSubmit: (data: ProveedorDto) => Promise<void> | void;
 }
 
-const defaultValues: ProveedorFormValues = {
+const defaultValues: ProveedorDto = {
   prvIdentifkeyMprv: "",
   prvNumeronitMprv: "",
   prvRazonsocialMprv: "",
   prvObjetosocialMprv: "",
-  sisTiposociedadTpso: "S",
+  sisTiposociedadTpso: "",
   sisCodactividadCiiu: "",
   prvFechconstMprv: "",
   prvPaginawebMprv: "",
@@ -62,14 +37,15 @@ const defaultValues: ProveedorFormValues = {
   sisIdedptSidp: "",
   sisCodproSipr: "",
   prvCodposMprv: "",
-  prvIdentifkeyRelg: null,
+  prvIdentifkeyRelg: "",
   prvEstadoregMprv: "1"
 };
 
 export function ProveedorForm({
-  initialData,
+  open,
   loading = false,
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: ProveedorFormProps) {
   const {
@@ -77,193 +53,196 @@ export function ProveedorForm({
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<ProveedorFormValues>({
-    resolver: zodResolver(proveedorSchema),
+  } = useForm<ProveedorDto>({
     defaultValues
   });
 
   useEffect(() => {
-    if (initialData) {
-      reset({
-        prvIdentifkeyMprv: initialData.prvIdentifkeyMprv ?? "",
-        prvNumeronitMprv: initialData.prvNumeronitMprv ?? "",
-        prvRazonsocialMprv: initialData.prvRazonsocialMprv ?? "",
-        prvObjetosocialMprv: initialData.prvObjetosocialMprv ?? "",
-        sisTiposociedadTpso: initialData.sisTiposociedadTpso ?? "S",
-        sisCodactividadCiiu: initialData.sisCodactividadCiiu ?? "",
-        prvFechconstMprv: initialData.prvFechconstMprv ?? "",
-        prvPaginawebMprv: initialData.prvPaginawebMprv ?? "",
-        prvDireccionMprv: initialData.prvDireccionMprv ?? "",
-        prvTelefonoMprv: initialData.prvTelefonoMprv ?? "",
-        prvCorreoMprv: initialData.prvCorreoMprv ?? "",
-        sisCodpaiSipa: initialData.sisCodpaiSipa ?? "CO",
-        sisIdedptSidp: initialData.sisIdedptSidp ?? "",
-        sisCodproSipr: initialData.sisCodproSipr ?? "",
-        prvCodposMprv: initialData.prvCodposMprv ?? "",
-        prvIdentifkeyRelg: initialData.prvIdentifkeyRelg ?? null,
-        prvEstadoregMprv: initialData.prvEstadoregMprv ?? "1"
-      });
-    } else {
-      reset(defaultValues);
-    }
-  }, [initialData, reset]);
-
-  const submitForm = (values: ProveedorFormValues) => {
-    const data: ProveedorDto = {
-      prvIdentifkeyMprv: values.prvIdentifkeyMprv,
-      prvNumeronitMprv: values.prvNumeronitMprv,
-      prvRazonsocialMprv: values.prvRazonsocialMprv,
-      prvObjetosocialMprv: values.prvObjetosocialMprv || "",
-      sisTiposociedadTpso: values.sisTiposociedadTpso || "S",
-      sisCodactividadCiiu: values.sisCodactividadCiiu || "",
-      prvFechconstMprv: values.prvFechconstMprv || "",
-      prvPaginawebMprv: values.prvPaginawebMprv || "",
-      prvDireccionMprv: values.prvDireccionMprv || "",
-      prvTelefonoMprv: values.prvTelefonoMprv || "",
-      prvCorreoMprv: values.prvCorreoMprv || "",
-      sisCodpaiSipa: values.sisCodpaiSipa || "CO",
-      sisIdedptSidp: values.sisIdedptSidp || "",
-      sisCodproSipr: values.sisCodproSipr || "",
-      prvCodposMprv: values.prvCodposMprv || "",
-      prvIdentifkeyRelg: values.prvIdentifkeyRelg || null,
-      prvEstadoregMprv: values.prvEstadoregMprv || "1"
-    };
-
-    onSubmit(data);
-  };
+    reset(initialData ?? defaultValues);
+  }, [initialData, reset, open]);
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {initialData ? "Editar proveedor" : "Crear proveedor"}
+      </DialogTitle>
+
       <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key proveedor"
-            fullWidth
-            disabled={Boolean(initialData)}
-            error={Boolean(errors.prvIdentifkeyMprv)}
-            helperText={errors.prvIdentifkeyMprv?.message}
-            {...register("prvIdentifkeyMprv")}
-          />
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Código proveedor"
+              {...register("prvIdentifkeyMprv", {
+                required: "El código del proveedor es obligatorio"
+              })}
+              error={!!errors.prvIdentifkeyMprv}
+              helperText={errors.prvIdentifkeyMprv?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="NIT"
-            fullWidth
-            error={Boolean(errors.prvNumeronitMprv)}
-            helperText={errors.prvNumeronitMprv?.message}
-            {...register("prvNumeronitMprv")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="NIT"
+              {...register("prvNumeronitMprv", {
+                required: "El NIT es obligatorio"
+              })}
+              error={!!errors.prvNumeronitMprv}
+              helperText={errors.prvNumeronitMprv?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Razón social"
-            fullWidth
-            error={Boolean(errors.prvRazonsocialMprv)}
-            helperText={errors.prvRazonsocialMprv?.message}
-            {...register("prvRazonsocialMprv")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Estado"
+              {...register("prvEstadoregMprv")}
+            />
+          </Grid>
 
-          <TextField
-            label="Correo"
-            fullWidth
-            error={Boolean(errors.prvCorreoMprv)}
-            helperText={errors.prvCorreoMprv?.message}
-            {...register("prvCorreoMprv")}
-          />
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="Razón social"
+              {...register("prvRazonsocialMprv", {
+                required: "La razón social es obligatoria"
+              })}
+              error={!!errors.prvRazonsocialMprv}
+              helperText={errors.prvRazonsocialMprv?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Teléfono"
-            fullWidth
-            {...register("prvTelefonoMprv")}
-          />
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Objeto social"
+              {...register("prvObjetosocialMprv")}
+            />
+          </Grid>
 
-          <TextField
-            label="Dirección"
-            fullWidth
-            {...register("prvDireccionMprv")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Tipo sociedad"
+              {...register("sisTiposociedadTpso")}
+            />
+          </Grid>
 
-          <TextField
-            label="País"
-            fullWidth
-            {...register("sisCodpaiSipa")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Actividad CIIU"
+              {...register("sisCodactividadCiiu")}
+            />
+          </Grid>
 
-          <TextField
-            label="Departamento"
-            fullWidth
-            {...register("sisIdedptSidp")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Fecha constitución"
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+              {...register("prvFechconstMprv")}
+            />
+          </Grid>
 
-          <TextField
-            label="Municipio"
-            fullWidth
-            {...register("sisCodproSipr")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Página web"
+              {...register("prvPaginawebMprv")}
+            />
+          </Grid>
 
-          <TextField
-            label="Código postal"
-            fullWidth
-            {...register("prvCodposMprv")}
-          />
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              fullWidth
+              label="Correo"
+              type="email"
+              {...register("prvCorreoMprv")}
+              error={!!errors.prvCorreoMprv}
+              helperText={errors.prvCorreoMprv?.message}
+            />
+          </Grid>
 
-          <TextField
-            label="Tipo sociedad"
-            fullWidth
-            {...register("sisTiposociedadTpso")}
-          />
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="Dirección"
+              {...register("prvDireccionMprv")}
+            />
+          </Grid>
 
-          <TextField
-            label="Actividad CIIU"
-            fullWidth
-            {...register("sisCodactividadCiiu")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Teléfono"
+              {...register("prvTelefonoMprv")}
+            />
+          </Grid>
 
-          <TextField
-            label="Fecha constitución"
-            type="date"
-            fullWidth
-            slotProps={{
-              inputLabel: {
-                shrink: true
-              }
-            }}
-            {...register("prvFechconstMprv")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="País"
+              {...register("sisCodpaiSipa")}
+            />
+          </Grid>
 
-          <TextField
-            label="Página web"
-            fullWidth
-            {...register("prvPaginawebMprv")}
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Departamento"
+              {...register("sisIdedptSidp")}
+            />
+          </Grid>
 
-          <TextField
-            label="Objeto social"
-            fullWidth
-            multiline
-            minRows={3}
-            sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
-            {...register("prvObjetosocialMprv")}
-          />
-        </Box>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Municipio"
+              {...register("sisCodproSipr")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Código postal"
+              {...register("prvCodposMprv")}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Representante legal"
+              {...register("prvIdentifkeyRelg")}
+            />
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
 
-        <Button type="submit" variant="contained" disabled={loading}>
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={handleSubmit(onSubmit)}
+        >
           {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
-    </form>
+    </Dialog>
   );
 }
