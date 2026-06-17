@@ -1,12 +1,4 @@
-import { http } from "./apiClient";
-import {
-  ApiResponse,
-  PageParams,
-  ChangeStatusRequest,
-  DeleteRequest,
-  buildApiWrapper,
-  buildPageParams
-} from "../types/common.types";
+import { ApiResponse, PageParams } from "../types/common.types";
 import {
   ActaModificacionDetalleDto,
   ActaModificacionDto,
@@ -17,29 +9,14 @@ import {
   OrdenServicioDto,
   PlanSemanalDto,
   PlanTrabajoDto,
-  ProyeccionSemanalDto,
+  ProyeccionDto,
   ReporteDiarioDto,
   ReporteOperacionDto,
   ResumenEquipoDto,
   SitioPuntoDto
 } from "../types/controlObras.types";
-
-function changeStatus<T>(baseUrl: string, recPKey: number, recEstreg: string) {
-  return http.post<ApiResponse<T>>(`${baseUrl}/changestatus`, [
-    {
-      recPKey,
-      recEstreg
-    } satisfies ChangeStatusRequest
-  ]);
-}
-
-function deleteByBody<T>(baseUrl: string, recPKey: number) {
-  return http.post<ApiResponse<T>>(`${baseUrl}/delete`, [
-    {
-      recPKey
-    } satisfies DeleteRequest
-  ]);
-}
+import { http } from "./apiClient";
+import { createCrudService } from "./crud.service";
 
 const BASE_CONTROL = "/api/control-obras";
 
@@ -58,474 +35,772 @@ const BASE_INFORMES = `${BASE_CONTROL}/informes-semanales`;
 const BASE_ACTAS = `${BASE_CONTROL}/actas-modificacion`;
 const BASE_ACTAS_DETALLES = `${BASE_CONTROL}/actas-modificacion-detalles`;
 
+const ordenesCrud = createCrudService<OrdenServicioDto>(
+  BASE_ORDENES,
+  "ordenKey"
+);
+
+const sitiosCrud = createCrudService<SitioPuntoDto>(
+  BASE_SITIOS,
+  "sitioKey"
+);
+
+const proyeccionSemanalCrud = createCrudService<ProyeccionDto>(
+  BASE_PROYECCION,
+  "proyeccionSemanalKey"
+);
+
+const planesCrud = createCrudService<PlanTrabajoDto>(
+  BASE_PLANES,
+  "planKey"
+);
+
+const planesSemanalesCrud = createCrudService<PlanSemanalDto>(
+  BASE_PLANES_SEMANALES,
+  "planSemanalKey"
+);
+
+const reportesDiariosCrud = createCrudService<ReporteDiarioDto>(
+  BASE_REPORTES_DIARIOS,
+  "reporteDiarioKey"
+);
+
+const resumenEquiposCrud = createCrudService<ResumenEquipoDto>(
+  BASE_RESUMEN_EQUIPOS,
+  "resumenEquipoKey"
+);
+
+const reportesOperacionCrud = createCrudService<ReporteOperacionDto>(
+  BASE_REPORTES_OPERACION,
+  "reporteOperacionKey"
+);
+
+const detallesEquiposOperacionCrud =
+  createCrudService<DetalleEquipoOperacionDto>(
+    BASE_DETALLES_EQUIPOS,
+    "detalleEquipoOperacionKey"
+  );
+
+const novedadesCrud = createCrudService<NovedadDto>(
+  BASE_NOVEDADES,
+  "novedadKey"
+);
+
+const informesSemanalesCrud = createCrudService<InformeSemanalDto>(
+  BASE_INFORMES,
+  "informeSemanalKey"
+);
+
+const actasModificacionCrud = createCrudService<ActaModificacionDto>(
+  BASE_ACTAS,
+  "actaModificacionKey"
+);
+
+const actasModificacionDetallesCrud =
+  createCrudService<ActaModificacionDetalleDto>(
+    BASE_ACTAS_DETALLES,
+    "actaModificacionDetalleKey"
+  );
+
 export const controlObrasService = {
   ordenes: {
-    health: () => http.get<string>(`${BASE_ORDENES}/health`),
+    ...ordenesCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<OrdenServicioDto>>(`${BASE_ORDENES}/pages`, {
-        params: buildPageParams(params)
-      }),
+    async getByEstado(estado: string): Promise<ApiResponse<OrdenServicioDto>> {
+      const response = await http.get<ApiResponse<OrdenServicioDto>>(
+        `${BASE_ORDENES}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    get: (id: number) =>
-      http.get<OrdenServicioDto>(`${BASE_ORDENES}/get/${id}`),
-
-    getByKey: (ordenKey: string) =>
-      http.get<ApiResponse<OrdenServicioDto>>(`${BASE_ORDENES}/by-key`, {
-        params: { ordenKey }
-      }),
-
-    getByEstado: (estado: string) =>
-      http.get<ApiResponse<OrdenServicioDto>>(`${BASE_ORDENES}/by-estado`, {
-        params: { estado }
-      }),
-
-    create: (data: OrdenServicioDto) =>
-      http.post<ApiResponse<OrdenServicioDto>>(
-        `${BASE_ORDENES}/create`,
-        buildApiWrapper(data)
-      ),
-
-    update: (id: number, data: OrdenServicioDto) =>
-      http.put<ApiResponse<OrdenServicioDto>>(
-        `${BASE_ORDENES}/update/${id}`,
-        buildApiWrapper(data)
-      ),
-
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<OrdenServicioDto>(BASE_ORDENES, recPKey, recEstreg),
-
-    delete: (recPKey: number) =>
-      deleteByBody<OrdenServicioDto>(BASE_ORDENES, recPKey)
+      return response.data;
+    }
   },
 
   sitios: {
-    health: () => http.get<string>(`${BASE_SITIOS}/health`),
+    ...sitiosCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<SitioPuntoDto>>(`${BASE_SITIOS}/pages`, {
-        params: buildPageParams(params)
-      }),
+    async getByOrden(ordenKey: string): Promise<ApiResponse<SitioPuntoDto>> {
+      const response = await http.get<ApiResponse<SitioPuntoDto>>(
+        `${BASE_SITIOS}/by-orden`,
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<SitioPuntoDto>>(`${BASE_SITIOS}/by-orden`, {
-        params: { ordenKey }
-      }),
-
-    create: (data: SitioPuntoDto) =>
-      http.post<ApiResponse<SitioPuntoDto>>(
-        `${BASE_SITIOS}/create`,
-        buildApiWrapper(data)
-      ),
-
-    update: (id: number, data: SitioPuntoDto) =>
-      http.put<ApiResponse<SitioPuntoDto>>(
-        `${BASE_SITIOS}/update/${id}`,
-        buildApiWrapper(data)
-      ),
-
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<SitioPuntoDto>(BASE_SITIOS, recPKey, recEstreg),
-
-    delete: (recPKey: number) =>
-      deleteByBody<SitioPuntoDto>(BASE_SITIOS, recPKey)
+      return response.data;
+    }
   },
 
   proyeccionSemanal: {
-    health: () => http.get<string>(`${BASE_PROYECCION}/health`),
+    ...proyeccionSemanalCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<ProyeccionSemanalDto>>(
-        `${BASE_PROYECCION}/pages`,
-        { params: buildPageParams(params) }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<ProyeccionSemanalDto>>(
+    async getByOrden(
+      ordenKey: string
+    ): Promise<ApiResponse<ProyeccionDto>> {
+      const response = await http.get<ApiResponse<ProyeccionDto>>(
         `${BASE_PROYECCION}/by-orden`,
-        { params: { ordenKey } }
-      ),
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    create: (data: ProyeccionSemanalDto) =>
-      http.post<ApiResponse<ProyeccionSemanalDto>>(
-        `${BASE_PROYECCION}/create`,
-        buildApiWrapper(data)
-      ),
+      return response.data;
+    },
 
-    update: (id: number, data: ProyeccionSemanalDto) =>
-      http.put<ApiResponse<ProyeccionSemanalDto>>(
-        `${BASE_PROYECCION}/update/${id}`,
-        buildApiWrapper(data)
-      ),
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<ProyeccionDto>> {
+      const response = await http.get<ApiResponse<ProyeccionDto>>(
+        `${BASE_PROYECCION}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<ProyeccionSemanalDto>(
-        BASE_PROYECCION,
-        recPKey,
-        recEstreg
-      ),
-
-    delete: (recPKey: number) =>
-      deleteByBody<ProyeccionSemanalDto>(BASE_PROYECCION, recPKey)
+      return response.data;
+    }
   },
 
   planes: {
-    health: () => http.get<string>(`${BASE_PLANES}/health`),
+    ...planesCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<PlanTrabajoDto>>(`${BASE_PLANES}/pages`, {
-        params: buildPageParams(params)
-      }),
+    async getByOrden(ordenKey: string): Promise<ApiResponse<PlanTrabajoDto>> {
+      const response = await http.get<ApiResponse<PlanTrabajoDto>>(
+        `${BASE_PLANES}/by-orden`,
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<PlanTrabajoDto>>(`${BASE_PLANES}/by-orden`, {
-        params: { ordenKey }
-      }),
+      return response.data;
+    },
 
-    getByPunto: (puntoKey: string) =>
-      http.get<ApiResponse<PlanTrabajoDto>>(`${BASE_PLANES}/by-punto`, {
-        params: { puntoKey }
-      }),
+    async getByPunto(puntoKey: string): Promise<ApiResponse<PlanTrabajoDto>> {
+      const response = await http.get<ApiResponse<PlanTrabajoDto>>(
+        `${BASE_PLANES}/by-punto`,
+        {
+          params: {
+            puntoKey
+          }
+        }
+      );
 
-    create: (data: PlanTrabajoDto) =>
-      http.post<ApiResponse<PlanTrabajoDto>>(
-        `${BASE_PLANES}/create`,
-        buildApiWrapper(data)
-      ),
+      return response.data;
+    },
 
-    update: (id: number, data: PlanTrabajoDto) =>
-      http.put<ApiResponse<PlanTrabajoDto>>(
-        `${BASE_PLANES}/update/${id}`,
-        buildApiWrapper(data)
-      ),
+    async getByEstado(estado: string): Promise<ApiResponse<PlanTrabajoDto>> {
+      const response = await http.get<ApiResponse<PlanTrabajoDto>>(
+        `${BASE_PLANES}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<PlanTrabajoDto>(BASE_PLANES, recPKey, recEstreg),
-
-    delete: (recPKey: number) =>
-      deleteByBody<PlanTrabajoDto>(BASE_PLANES, recPKey)
+      return response.data;
+    }
   },
 
   planesSemanales: {
-    health: () => http.get<string>(`${BASE_PLANES_SEMANALES}/health`),
+    ...planesSemanalesCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<PlanSemanalDto>>(
-        `${BASE_PLANES_SEMANALES}/pages`,
-        { params: buildPageParams(params) }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<PlanSemanalDto>>(
+    async getByOrden(ordenKey: string): Promise<ApiResponse<PlanSemanalDto>> {
+      const response = await http.get<ApiResponse<PlanSemanalDto>>(
         `${BASE_PLANES_SEMANALES}/by-orden`,
-        { params: { ordenKey } }
-      ),
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    getByPlan: (planKey: string) =>
-      http.get<ApiResponse<PlanSemanalDto>>(
+      return response.data;
+    },
+
+    async getByPlan(planKey: string): Promise<ApiResponse<PlanSemanalDto>> {
+      const response = await http.get<ApiResponse<PlanSemanalDto>>(
         `${BASE_PLANES_SEMANALES}/by-plan`,
-        { params: { planKey } }
-      ),
+        {
+          params: {
+            planKey
+          }
+        }
+      );
 
-    create: (data: PlanSemanalDto) =>
-      http.post<ApiResponse<PlanSemanalDto>>(
-        `${BASE_PLANES_SEMANALES}/create`,
-        buildApiWrapper(data)
-      ),
+      return response.data;
+    },
 
-    update: (id: number, data: PlanSemanalDto) =>
-      http.put<ApiResponse<PlanSemanalDto>>(
-        `${BASE_PLANES_SEMANALES}/update/${id}`,
-        buildApiWrapper(data)
-      ),
+    async getByProyeccionSemanal(
+      proyeccionSemanalKey: string
+    ): Promise<ApiResponse<PlanSemanalDto>> {
+      const response = await http.get<ApiResponse<PlanSemanalDto>>(
+        `${BASE_PLANES_SEMANALES}/by-proyeccion-semanal`,
+        {
+          params: {
+            proyeccionSemanalKey
+          }
+        }
+      );
 
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<PlanSemanalDto>(
-        BASE_PLANES_SEMANALES,
-        recPKey,
-        recEstreg
-      ),
+      return response.data;
+    },
 
-    delete: (recPKey: number) =>
-      deleteByBody<PlanSemanalDto>(BASE_PLANES_SEMANALES, recPKey)
+    async getByEstado(estado: string): Promise<ApiResponse<PlanSemanalDto>> {
+      const response = await http.get<ApiResponse<PlanSemanalDto>>(
+        `${BASE_PLANES_SEMANALES}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
+
+      return response.data;
+    }
   },
 
   reportesDiarios: {
-    health: () => http.get<string>(`${BASE_REPORTES_DIARIOS}/health`),
+    ...reportesDiariosCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<ReporteDiarioDto>>(
-        `${BASE_REPORTES_DIARIOS}/pages`,
-        { params: buildPageParams(params) }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<ReporteDiarioDto>>(
+    async getByOrden(
+      ordenKey: string
+    ): Promise<ApiResponse<ReporteDiarioDto>> {
+      const response = await http.get<ApiResponse<ReporteDiarioDto>>(
         `${BASE_REPORTES_DIARIOS}/by-orden`,
-        { params: { ordenKey } }
-      ),
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    getByPlanSemanal: (planSemanalKey: string) =>
-      http.get<ApiResponse<ReporteDiarioDto>>(
+      return response.data;
+    },
+
+    async getByPlanSemanal(
+      planSemanalKey: string
+    ): Promise<ApiResponse<ReporteDiarioDto>> {
+      const response = await http.get<ApiResponse<ReporteDiarioDto>>(
         `${BASE_REPORTES_DIARIOS}/by-plan-semanal`,
-        { params: { planSemanalKey } }
-      ),
+        {
+          params: {
+            planSemanalKey
+          }
+        }
+      );
 
-    create: (data: ReporteDiarioDto) =>
-      http.post<ApiResponse<ReporteDiarioDto>>(
-        `${BASE_REPORTES_DIARIOS}/create`,
-        buildApiWrapper(data)
-      ),
+      return response.data;
+    },
 
-    update: (id: number, data: ReporteDiarioDto) =>
-      http.put<ApiResponse<ReporteDiarioDto>>(
-        `${BASE_REPORTES_DIARIOS}/update/${id}`,
-        buildApiWrapper(data)
-      ),
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<ReporteDiarioDto>> {
+      const response = await http.get<ApiResponse<ReporteDiarioDto>>(
+        `${BASE_REPORTES_DIARIOS}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<ReporteDiarioDto>(
-        BASE_REPORTES_DIARIOS,
-        recPKey,
-        recEstreg
-      ),
-
-    delete: (recPKey: number) =>
-      deleteByBody<ReporteDiarioDto>(BASE_REPORTES_DIARIOS, recPKey)
+      return response.data;
+    }
   },
 
   resumenEquipos: {
-    health: () => http.get<string>(`${BASE_RESUMEN_EQUIPOS}/health`),
+    ...resumenEquiposCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<ResumenEquipoDto>>(
-        `${BASE_RESUMEN_EQUIPOS}/pages`,
-        { params: buildPageParams(params) }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<ResumenEquipoDto>>(
+    async getByOrden(ordenKey: string): Promise<ApiResponse<ResumenEquipoDto>> {
+      const response = await http.get<ApiResponse<ResumenEquipoDto>>(
         `${BASE_RESUMEN_EQUIPOS}/by-orden`,
-        { params: { ordenKey } }
-      ),
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    create: (data: ResumenEquipoDto) =>
-      http.post<ApiResponse<ResumenEquipoDto>>(
-        `${BASE_RESUMEN_EQUIPOS}/create`,
-        buildApiWrapper(data)
-      )
+      return response.data;
+    },
+
+    async getByEquipo(equipoKey: string): Promise<ApiResponse<ResumenEquipoDto>> {
+      const response = await http.get<ApiResponse<ResumenEquipoDto>>(
+        `${BASE_RESUMEN_EQUIPOS}/by-equipo`,
+        {
+          params: {
+            equipoKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByEstado(estado: string): Promise<ApiResponse<ResumenEquipoDto>> {
+      const response = await http.get<ApiResponse<ResumenEquipoDto>>(
+        `${BASE_RESUMEN_EQUIPOS}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
+
+      return response.data;
+    }
   },
 
   reportesOperacion: {
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<ReporteOperacionDto>>(
-        `${BASE_REPORTES_OPERACION}/pages`,
-        { params: buildPageParams(params) }
-      ),
+    ...reportesOperacionCrud,
 
-    getByKey: (reporteOperacionKey: string) =>
-      http.get<ReporteOperacionDto>(`${BASE_REPORTES_OPERACION}/by-key`, {
-        params: { reporteOperacionKey }
-      }),
+    async getByOrden(
+      ordenKey: string
+    ): Promise<ApiResponse<ReporteOperacionDto>> {
+      const response = await http.get<ApiResponse<ReporteOperacionDto>>(
+        `${BASE_REPORTES_OPERACION}/by-orden`,
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    getByOrden: (ordenKey: string) =>
-      http.get<ReporteOperacionDto[]>(`${BASE_REPORTES_OPERACION}/by-orden`, {
-        params: { ordenKey }
-      }),
+      return response.data;
+    },
 
-    create: (data: ReporteOperacionDto) =>
-      http.post<ApiResponse<ReporteOperacionDto>>(
-        `${BASE_REPORTES_OPERACION}/create`,
-        buildApiWrapper(data)
-      ),
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<ReporteOperacionDto>> {
+      const response = await http.get<ApiResponse<ReporteOperacionDto>>(
+        `${BASE_REPORTES_OPERACION}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    update: (id: number, data: ReporteOperacionDto) =>
-      http.put<ApiResponse<ReporteOperacionDto>>(
-        `${BASE_REPORTES_OPERACION}/update/${id}`,
-        buildApiWrapper(data)
-      ),
-
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<ReporteOperacionDto>(
-        BASE_REPORTES_OPERACION,
-        recPKey,
-        recEstreg
-      ),
-
-    delete: (recPKey: number) =>
-      deleteByBody<ReporteOperacionDto>(BASE_REPORTES_OPERACION, recPKey)
+      return response.data;
+    }
   },
 
   detallesEquiposOperacion: {
-    health: () => http.get<string>(`${BASE_DETALLES_EQUIPOS}/health`),
+    ...detallesEquiposOperacionCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<DetalleEquipoOperacionDto>>(
-        `${BASE_DETALLES_EQUIPOS}/pages`,
-        { params: buildPageParams(params) }
-      ),
-
-    getByOrden: (ordenKey: string) =>
-      http.get<DetalleEquipoOperacionDto[]>(
+    async getByOrden(
+      ordenKey: string
+    ): Promise<ApiResponse<DetalleEquipoOperacionDto>> {
+      const response = await http.get<ApiResponse<DetalleEquipoOperacionDto>>(
         `${BASE_DETALLES_EQUIPOS}/by-orden`,
-        { params: { ordenKey } }
-      ),
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    getByEquipo: (equipoKey: string) =>
-      http.get<DetalleEquipoOperacionDto[]>(
+      return response.data;
+    },
+
+    async getByEquipo(
+      equipoKey: string
+    ): Promise<ApiResponse<DetalleEquipoOperacionDto>> {
+      const response = await http.get<ApiResponse<DetalleEquipoOperacionDto>>(
         `${BASE_DETALLES_EQUIPOS}/by-equipo`,
-        { params: { equipoKey } }
-      ),
+        {
+          params: {
+            equipoKey
+          }
+        }
+      );
 
-    create: (data: DetalleEquipoOperacionDto) =>
-      http.post<ApiResponse<DetalleEquipoOperacionDto>>(
-        `${BASE_DETALLES_EQUIPOS}/create`,
-        buildApiWrapper(data)
-      ),
+      return response.data;
+    },
 
-    update: (id: number, data: DetalleEquipoOperacionDto) =>
-      http.put<ApiResponse<DetalleEquipoOperacionDto>>(
-        `${BASE_DETALLES_EQUIPOS}/update/${id}`,
-        buildApiWrapper(data)
-      ),
+    async getByReporteOperacion(
+      reporteOperacionKey: string
+    ): Promise<ApiResponse<DetalleEquipoOperacionDto>> {
+      const response = await http.get<ApiResponse<DetalleEquipoOperacionDto>>(
+        `${BASE_DETALLES_EQUIPOS}/by-reporte-operacion`,
+        {
+          params: {
+            reporteOperacionKey
+          }
+        }
+      );
 
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<DetalleEquipoOperacionDto>(
-        BASE_DETALLES_EQUIPOS,
-        recPKey,
-        recEstreg
-      ),
+      return response.data;
+    },
 
-    delete: (recPKey: number) =>
-      deleteByBody<DetalleEquipoOperacionDto>(
-        BASE_DETALLES_EQUIPOS,
-        recPKey
-      )
+    async getByTipoEquipo(
+      tipoEquipoKey: string
+    ): Promise<ApiResponse<DetalleEquipoOperacionDto>> {
+      const response = await http.get<ApiResponse<DetalleEquipoOperacionDto>>(
+        `${BASE_DETALLES_EQUIPOS}/by-tipo-equipo`,
+        {
+          params: {
+            tipoEquipoKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByUnidad(
+      unidadKey: string
+    ): Promise<ApiResponse<DetalleEquipoOperacionDto>> {
+      const response = await http.get<ApiResponse<DetalleEquipoOperacionDto>>(
+        `${BASE_DETALLES_EQUIPOS}/by-unidad`,
+        {
+          params: {
+            unidadKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<DetalleEquipoOperacionDto>> {
+      const response = await http.get<ApiResponse<DetalleEquipoOperacionDto>>(
+        `${BASE_DETALLES_EQUIPOS}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
+
+      return response.data;
+    }
   },
 
   novedades: {
-    health: () => http.get<string>(`${BASE_NOVEDADES}/health`),
+    ...novedadesCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<NovedadDto>>(`${BASE_NOVEDADES}/pages`, {
-        params: buildPageParams(params)
-      }),
+    async getByOrden(ordenKey: string): Promise<ApiResponse<NovedadDto>> {
+      const response = await http.get<ApiResponse<NovedadDto>>(
+        `${BASE_NOVEDADES}/by-orden`,
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<NovedadDto>>(`${BASE_NOVEDADES}/by-orden`, {
-        params: { ordenKey }
-      }),
+      return response.data;
+    },
 
-    getByRegistroBase: (registroBase: string) =>
-      http.get<ApiResponse<NovedadDto>>(
+    async getByRegistroBase(
+      registroBase: string
+    ): Promise<ApiResponse<NovedadDto>> {
+      const response = await http.get<ApiResponse<NovedadDto>>(
         `${BASE_NOVEDADES}/by-registro-base`,
-        { params: { registroBase } }
-      ),
+        {
+          params: {
+            registroBase
+          }
+        }
+      );
 
-    create: (data: NovedadDto) =>
-      http.post<ApiResponse<NovedadDto>>(
-        `${BASE_NOVEDADES}/create`,
-        buildApiWrapper(data)
-      ),
+      return response.data;
+    },
 
-    update: (id: number, data: NovedadDto) =>
-      http.put<ApiResponse<NovedadDto>>(
-        `${BASE_NOVEDADES}/update/${id}`,
-        buildApiWrapper(data)
-      ),
+    async getByTipoNovedad(
+      tipoNovedad: string
+    ): Promise<ApiResponse<NovedadDto>> {
+      const response = await http.get<ApiResponse<NovedadDto>>(
+        `${BASE_NOVEDADES}/by-tipo-novedad`,
+        {
+          params: {
+            tipoNovedad
+          }
+        }
+      );
 
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<NovedadDto>(BASE_NOVEDADES, recPKey, recEstreg),
+      return response.data;
+    },
 
-    delete: (recPKey: number) =>
-      deleteByBody<NovedadDto>(BASE_NOVEDADES, recPKey)
+    async getByEstado(estado: string): Promise<ApiResponse<NovedadDto>> {
+      const response = await http.get<ApiResponse<NovedadDto>>(
+        `${BASE_NOVEDADES}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
+
+      return response.data;
+    }
   },
 
   avances: {
-    health: () => http.get<string>(`${BASE_AVANCES}/health`),
+    async health(): Promise<string> {
+      const response = await http.get<string>(`${BASE_AVANCES}/health`);
+      return response.data;
+    },
 
-    getByOrden: (ordenKey: string) =>
-      http.get<ApiResponse<AvanceObraDto>>(`${BASE_AVANCES}/by-orden`, {
-        params: { ordenKey }
-      }),
+    async getByOrden(ordenKey: string): Promise<ApiResponse<AvanceObraDto>> {
+      const response = await http.get<ApiResponse<AvanceObraDto>>(
+        `${BASE_AVANCES}/by-orden`,
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    getByPlan: (planKey: string) =>
-      http.get<ApiResponse<AvanceObraDto>>(`${BASE_AVANCES}/by-plan`, {
-        params: { planKey }
-      }),
+      return response.data;
+    },
 
-    getByPlanSemanal: (planSemanalKey: string) =>
-      http.get<ApiResponse<AvanceObraDto>>(
+    async getByPlan(planKey: string): Promise<ApiResponse<AvanceObraDto>> {
+      const response = await http.get<ApiResponse<AvanceObraDto>>(
+        `${BASE_AVANCES}/by-plan`,
+        {
+          params: {
+            planKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByPlanSemanal(
+      planSemanalKey: string
+    ): Promise<ApiResponse<AvanceObraDto>> {
+      const response = await http.get<ApiResponse<AvanceObraDto>>(
         `${BASE_AVANCES}/by-plan-semanal`,
-        { params: { planSemanalKey } }
-      ),
+        {
+          params: {
+            planSemanalKey
+          }
+        }
+      );
 
-    getOrdenConsolidado: (ordenKey: string) =>
-      http.get<ApiResponse<AvanceObraDto>>(`${BASE_AVANCES}/orden/${ordenKey}`)
+      return response.data;
+    },
+
+    async getOrdenConsolidado(
+      ordenKey: string
+    ): Promise<ApiResponse<AvanceObraDto>> {
+      const response = await http.get<ApiResponse<AvanceObraDto>>(
+        `${BASE_AVANCES}/orden/${ordenKey}`
+      );
+
+      return response.data;
+    }
   },
 
   informesSemanales: {
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<InformeSemanalDto>>(`${BASE_INFORMES}/pages`, {
-        params: buildPageParams(params)
-      })
+    ...informesSemanalesCrud,
+
+    async getByOrden(
+      ordenKey: string
+    ): Promise<ApiResponse<InformeSemanalDto>> {
+      const response = await http.get<ApiResponse<InformeSemanalDto>>(
+        `${BASE_INFORMES}/by-orden`,
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByProyeccionSemanal(
+      proyeccionSemanalKey: string
+    ): Promise<ApiResponse<InformeSemanalDto>> {
+      const response = await http.get<ApiResponse<InformeSemanalDto>>(
+        `${BASE_INFORMES}/by-proyeccion-semanal`,
+        {
+          params: {
+            proyeccionSemanalKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByPlanSemanal(
+      planSemanalKey: string
+    ): Promise<ApiResponse<InformeSemanalDto>> {
+      const response = await http.get<ApiResponse<InformeSemanalDto>>(
+        `${BASE_INFORMES}/by-plan-semanal`,
+        {
+          params: {
+            planSemanalKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<InformeSemanalDto>> {
+      const response = await http.get<ApiResponse<InformeSemanalDto>>(
+        `${BASE_INFORMES}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
+
+      return response.data;
+    }
   },
 
   actasModificacion: {
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<ActaModificacionDto>>(`${BASE_ACTAS}/pages`, {
-        params: buildPageParams(params)
-      }),
+    ...actasModificacionCrud,
 
-    create: (data: ActaModificacionDto) =>
-      http.post<ApiResponse<ActaModificacionDto>>(
-        `${BASE_ACTAS}/create`,
-        buildApiWrapper(data)
-      ),
+    async getByOrden(
+      ordenKey: string
+    ): Promise<ApiResponse<ActaModificacionDto>> {
+      const response = await http.get<ApiResponse<ActaModificacionDto>>(
+        `${BASE_ACTAS}/by-orden`,
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    update: (id: number, data: ActaModificacionDto) =>
-      http.put<ApiResponse<ActaModificacionDto>>(
-        `${BASE_ACTAS}/update/${id}`,
-        buildApiWrapper(data)
-      ),
+      return response.data;
+    },
 
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<ActaModificacionDto>(BASE_ACTAS, recPKey, recEstreg),
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<ActaModificacionDto>> {
+      const response = await http.get<ApiResponse<ActaModificacionDto>>(
+        `${BASE_ACTAS}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    delete: (recPKey: number) =>
-      deleteByBody<ActaModificacionDto>(BASE_ACTAS, recPKey)
+      return response.data;
+    }
   },
 
   actasModificacionDetalles: {
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<ActaModificacionDetalleDto>>(
-        `${BASE_ACTAS_DETALLES}/pages`,
-        { params: buildPageParams(params) }
-      ),
+    ...actasModificacionDetallesCrud,
 
-    create: (data: ActaModificacionDetalleDto) =>
-      http.post<ApiResponse<ActaModificacionDetalleDto>>(
-        `${BASE_ACTAS_DETALLES}/create`,
-        buildApiWrapper(data)
-      ),
+    async getByActa(
+      actaModificacionKey: string
+    ): Promise<ApiResponse<ActaModificacionDetalleDto>> {
+      const response = await http.get<ApiResponse<ActaModificacionDetalleDto>>(
+        `${BASE_ACTAS_DETALLES}/by-acta`,
+        {
+          params: {
+            actaModificacionKey
+          }
+        }
+      );
 
-    update: (id: number, data: ActaModificacionDetalleDto) =>
-      http.put<ApiResponse<ActaModificacionDetalleDto>>(
-        `${BASE_ACTAS_DETALLES}/update/${id}`,
-        buildApiWrapper(data)
-      ),
+      return response.data;
+    },
 
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      changeStatus<ActaModificacionDetalleDto>(
-        BASE_ACTAS_DETALLES,
-        recPKey,
-        recEstreg
-      ),
+    async getByOrden(
+      ordenKey: string
+    ): Promise<ApiResponse<ActaModificacionDetalleDto>> {
+      const response = await http.get<ApiResponse<ActaModificacionDetalleDto>>(
+        `${BASE_ACTAS_DETALLES}/by-orden`,
+        {
+          params: {
+            ordenKey
+          }
+        }
+      );
 
-    delete: (recPKey: number) =>
-      deleteByBody<ActaModificacionDetalleDto>(
-        BASE_ACTAS_DETALLES,
-        recPKey
-      )
+      return response.data;
+    },
+
+    async getByPlan(
+      planKey: string
+    ): Promise<ApiResponse<ActaModificacionDetalleDto>> {
+      const response = await http.get<ApiResponse<ActaModificacionDetalleDto>>(
+        `${BASE_ACTAS_DETALLES}/by-plan`,
+        {
+          params: {
+            planKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByPlanSemanal(
+      planSemanalKey: string
+    ): Promise<ApiResponse<ActaModificacionDetalleDto>> {
+      const response = await http.get<ApiResponse<ActaModificacionDetalleDto>>(
+        `${BASE_ACTAS_DETALLES}/by-plan-semanal`,
+        {
+          params: {
+            planSemanalKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByPunto(
+      puntoKey: string
+    ): Promise<ApiResponse<ActaModificacionDetalleDto>> {
+      const response = await http.get<ApiResponse<ActaModificacionDetalleDto>>(
+        `${BASE_ACTAS_DETALLES}/by-punto`,
+        {
+          params: {
+            puntoKey
+          }
+        }
+      );
+
+      return response.data;
+    },
+
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<ActaModificacionDetalleDto>> {
+      const response = await http.get<ApiResponse<ActaModificacionDetalleDto>>(
+        `${BASE_ACTAS_DETALLES}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
+
+      return response.data;
+    }
   }
 };
+
+export const controlObras = controlObrasService;

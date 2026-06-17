@@ -1,40 +1,48 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
   MenuItem,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ReferenciaEvidenciaDto } from "../../types/evidencias.types";
+import {
+  ReferenciaEvidenciaDto,
+  TipoRegistroEvidencia
+} from "../../types/evidencias.types";
+import { EstadoRegistro } from "@/types/common.types";
 
-const schema = z.object({
-  eviIdentifkeyRefe: z.string().min(1, "La key de referencia es obligatoria"),
-  eviIdentifkeyEvid: z.string().min(1, "La evidencia es obligatoria"),
-  eviTiporegistroRefe: z.string().min(1, "El tipo de registro es obligatorio"),
-  eviIdentifregistroRefe: z.string().min(1, "El registro destino es obligatorio"),
-  eviObservacionRefe: z.string().optional(),
-  eviTiporegistRefe: z.string().optional(),
-  eviEstadoregRefe: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
-
-interface ReferenciaEvidenciaFormProps {
-  loading?: boolean;
-  evidenciaKeyDefault?: string;
-  registroKeyDefault?: string;
-  tipoRegistroDefault?: string;
-  onCancel: () => void;
-  onSubmit: (data: ReferenciaEvidenciaDto) => void;
+interface FormValues {
+  eviIdentifkeyRefe: string;
+  eviIdentifkeyEvid: string;
+  eviTiporegistroRefe: string;
+  eviIdentifregistroRefe: string;
+  eviObservacionRefe: string;
+  eviTiporegistRefe: string;
+  eviEstadoregRefe: string;
 }
 
-const tipoRegistroOptions = [
+interface ReferenciaEvidenciaFormProps {
+  open: boolean;
+  loading?: boolean;
+  initialData?: ReferenciaEvidenciaDto | null;
+  evidenciaKeyDefault?: string;
+  registroKeyDefault?: string;
+  tipoRegistroDefault?: TipoRegistroEvidencia | string;
+  onClose: () => void;
+  onSubmit: (data: ReferenciaEvidenciaDto) => Promise<void> | void;
+}
+
+const tipoRegistroOptions: Array<{
+  value: TipoRegistroEvidencia;
+  label: string;
+}> = [
   {
     value: "REPORTE_OPERACION",
     label: "Reporte de operación"
@@ -77,116 +85,212 @@ const tipoRegistroOptions = [
   }
 ];
 
+const emptyValues: FormValues = {
+  eviIdentifkeyRefe: "",
+  eviIdentifkeyEvid: "",
+  eviTiporegistroRefe: "REPORTE_OPERACION",
+  eviIdentifregistroRefe: "",
+  eviObservacionRefe: "",
+  eviTiporegistRefe: "1",
+  eviEstadoregRefe: "1"
+};
+
+function buildReferenceKey() {
+  return `REFE-${Date.now().toString().slice(-6)}`;
+}
+
+function buildCreateValues(
+  evidenciaKeyDefault: string,
+  registroKeyDefault: string,
+  tipoRegistroDefault: TipoRegistroEvidencia | string
+): FormValues {
+  return {
+    eviIdentifkeyRefe: buildReferenceKey(),
+    eviIdentifkeyEvid: evidenciaKeyDefault,
+    eviTiporegistroRefe: tipoRegistroDefault || "REPORTE_OPERACION",
+    eviIdentifregistroRefe: registroKeyDefault,
+    eviObservacionRefe: "",
+    eviTiporegistRefe: "1",
+    eviEstadoregRefe: "1"
+  };
+}
+
+function mapInitialData(data: ReferenciaEvidenciaDto): FormValues {
+  return {
+    eviIdentifkeyRefe: data.eviIdentifkeyRefe ?? "",
+    eviIdentifkeyEvid: data.eviIdentifkeyEvid ?? "",
+    eviTiporegistroRefe: data.eviTiporegistroRefe ?? "REPORTE_OPERACION",
+    eviIdentifregistroRefe: data.eviIdentifregistroRefe ?? "",
+    eviObservacionRefe: data.eviObservacionRefe ?? "",
+    eviTiporegistRefe: data.eviTiporegistRefe ?? "1",
+    eviEstadoregRefe: data.eviEstadoregRefe ?? "1"
+  };
+}
+
 export function ReferenciaEvidenciaForm({
+  open,
   loading = false,
+  initialData,
   evidenciaKeyDefault = "",
   registroKeyDefault = "",
   tipoRegistroDefault = "REPORTE_OPERACION",
-  onCancel,
+  onClose,
   onSubmit
 }: ReferenciaEvidenciaFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      eviIdentifkeyRefe: `REFE-${Date.now().toString().slice(-6)}`,
-      eviIdentifkeyEvid: evidenciaKeyDefault,
-      eviTiporegistroRefe: tipoRegistroDefault || "REPORTE_OPERACION",
-      eviIdentifregistroRefe: registroKeyDefault,
-      eviObservacionRefe: "",
-      eviTiporegistRefe: "1",
-      eviEstadoregRefe: "1"
-    }
+    defaultValues: emptyValues
   });
 
-  const submitForm = (values: FormValues) => {
-    onSubmit({
-      eviIdentifkeyRefe: values.eviIdentifkeyRefe,
-      eviIdentifkeyEvid: values.eviIdentifkeyEvid,
-      eviTiporegistroRefe: values.eviTiporegistroRefe,
-      eviIdentifregistroRefe: values.eviIdentifregistroRefe,
-      eviObservacionRefe: values.eviObservacionRefe || "",
-      eviTiporegistRefe: values.eviTiporegistRefe || "1",
-      eviEstadoregRefe: values.eviEstadoregRefe || "1"
-    });
-  };
+  useEffect(() => {
+    if (!open) return;
+
+    if (initialData) {
+      reset(mapInitialData(initialData));
+      return;
+    }
+
+    reset(
+      buildCreateValues(
+        evidenciaKeyDefault,
+        registroKeyDefault,
+        tipoRegistroDefault
+      )
+    );
+  }, [
+    open,
+    initialData,
+    evidenciaKeyDefault,
+    registroKeyDefault,
+    tipoRegistroDefault,
+    reset
+  ]);
+
+const submitForm = (values: FormValues) => {
+  onSubmit({
+    eviPrimarykeyRefe: initialData?.eviPrimarykeyRefe,
+    eviIdentifkeyRefe: values.eviIdentifkeyRefe,
+    eviIdentifkeyEvid: values.eviIdentifkeyEvid,
+    eviTiporegistroRefe: values.eviTiporegistroRefe,
+    eviIdentifregistroRefe: values.eviIdentifregistroRefe,
+    eviObservacionRefe: values.eviObservacionRefe,
+    eviTiporegistRefe: values.eviTiporegistRefe || "1",
+    eviEstadoregRefe: (values.eviEstadoregRefe || "1") as EstadoRegistro
+  });
+};
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
-      <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key referencia"
-            fullWidth
-            error={Boolean(errors.eviIdentifkeyRefe)}
-            helperText={errors.eviIdentifkeyRefe?.message}
-            {...register("eviIdentifkeyRefe")}
-          />
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle>
+        {initialData
+          ? "Editar referencia de evidencia"
+          : "Crear referencia de evidencia"}
+      </DialogTitle>
 
-          <TextField
-            label="Key evidencia"
-            fullWidth
-            error={Boolean(errors.eviIdentifkeyEvid)}
-            helperText={errors.eviIdentifkeyEvid?.message}
-            {...register("eviIdentifkeyEvid")}
-          />
-
-          <TextField
-            label="Tipo registro"
-            select
-            fullWidth
-            defaultValue={tipoRegistroDefault || "REPORTE_OPERACION"}
-            error={Boolean(errors.eviTiporegistroRefe)}
-            helperText={errors.eviTiporegistroRefe?.message}
-            {...register("eviTiporegistroRefe")}
+      <Box component="form" onSubmit={handleSubmit(submitForm)}>
+        <DialogContent dividers>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "1fr 1fr"
+              },
+              gap: 2
+            }}
           >
-            {tipoRegistroOptions.map(option => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
+            <TextField
+              label="Key referencia"
+              fullWidth
+              error={Boolean(errors.eviIdentifkeyRefe)}
+              helperText={errors.eviIdentifkeyRefe?.message}
+              {...register("eviIdentifkeyRefe", {
+                required: "La key de referencia es obligatoria"
+              })}
+            />
 
-          <TextField
-            label="Key registro destino"
-            fullWidth
-            error={Boolean(errors.eviIdentifregistroRefe)}
-            helperText={errors.eviIdentifregistroRefe?.message}
-            {...register("eviIdentifregistroRefe")}
-          />
+            <TextField
+              label="Key evidencia"
+              fullWidth
+              error={Boolean(errors.eviIdentifkeyEvid)}
+              helperText={errors.eviIdentifkeyEvid?.message}
+              {...register("eviIdentifkeyEvid", {
+                required: "La evidencia es obligatoria"
+              })}
+            />
 
-          <TextField
-            label="Observación"
-            fullWidth
-            multiline
-            minRows={3}
-            sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
-            {...register("eviObservacionRefe")}
-          />
-        </Box>
-      </DialogContent>
+            <TextField
+              label="Tipo registro"
+              select
+              fullWidth
+              defaultValue="REPORTE_OPERACION"
+              error={Boolean(errors.eviTiporegistroRefe)}
+              helperText={errors.eviTiporegistroRefe?.message}
+              {...register("eviTiporegistroRefe", {
+                required: "El tipo de registro es obligatorio"
+              })}
+            >
+              {tipoRegistroOptions.map(option => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
 
-      <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
-          Cancelar
-        </Button>
+            <TextField
+              label="Key registro destino"
+              fullWidth
+              error={Boolean(errors.eviIdentifregistroRefe)}
+              helperText={errors.eviIdentifregistroRefe?.message}
+              {...register("eviIdentifregistroRefe", {
+                required: "El registro destino es obligatorio"
+              })}
+            />
 
-        <Button type="submit" variant="contained" disabled={loading}>
-          {loading ? "Guardando..." : "Guardar"}
-        </Button>
-      </DialogActions>
-    </form>
+            <TextField
+              label="Tipo registro interno"
+              fullWidth
+              placeholder="1"
+              {...register("eviTiporegistRefe")}
+            />
+
+            <TextField
+              label="Estado registro"
+              fullWidth
+              placeholder="1"
+              {...register("eviEstadoregRefe")}
+            />
+
+            <TextField
+              label="Observación"
+              fullWidth
+              multiline
+              minRows={3}
+              sx={{ gridColumn: { xs: "auto", md: "1 / 3" } }}
+              {...register("eviObservacionRefe")}
+            />
+          </Box>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancelar
+          </Button>
+
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? "Guardando..." : "Guardar"}
+          </Button>
+        </DialogActions>
+      </Box>
+    </Dialog>
   );
 }

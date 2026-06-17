@@ -5,8 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -14,13 +12,16 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useRouter } from "next/navigation";
+
 import { PageHeader } from "../../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../../components/common/LoadingBox";
-import { EmptyState } from "../../../../components/common/EmptyState";
 import { StatusChip } from "../../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../../components/common/CrudActionButtons";
 import { DetalleEquipoOperacionForm } from "../../../../components/control-obras/DetalleEquipoOperacionForm";
 import { controlObrasService } from "../../../../services/controlObras.service";
 import { DetalleEquipoOperacionDto } from "../../../../types/controlObras.types";
@@ -30,7 +31,25 @@ type ConfirmAction =
   | { type: "status"; row: DetalleEquipoOperacionDto }
   | null;
 
+function buildRowKey(row: DetalleEquipoOperacionDto, index: number) {
+  return (
+    row.orsPrimarykeyDeop ??
+    row.orsIdentifkeyDeop ??
+    `${row.orsIdentifkeyRope ?? "ROPE"}-${row.prvIdentifkeyInve ?? "INVE"}-${index}`
+  );
+}
+
+function formatCurrency(value?: number) {
+  return `$${new Intl.NumberFormat("es-CO").format(value ?? 0)}`;
+}
+
+function formatNumber(value?: number) {
+  return new Intl.NumberFormat("es-CO").format(value ?? 0);
+}
+
 export default function DetallesEquiposOperacionPage() {
+  const router = useRouter();
+
   const [rows, setRows] = useState<DetalleEquipoOperacionDto[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,15 +65,28 @@ export default function DetallesEquiposOperacionPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.orsIdentifkeyDeop,
         row.orsIdentifkeyRope,
         row.orsIdentifkeyOrde,
+        row.orsIdentifkeyPsem,
+        row.orsIdentifkeyPlse,
+        row.orsIdentifkeyPunt,
         row.prvIdentifkeyInve,
+        row.prvTipoequipoTieq,
+        row.orsNombrequipoDeop,
+        row.orsRefermodeloDeop,
+        row.orsNroregistroDeop,
+        row.orsUnidadDeop,
+        row.orsTipocontrolDeop,
+        row.orsFechatrabajoDeop,
+        row.orsObservacionDeop,
+        row.orsTiporegistDeop,
         row.orsEstadoregDeop
       ]
         .filter(Boolean)
@@ -75,11 +107,11 @@ export default function DetallesEquiposOperacionPage() {
           filter: ""
         });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
-          "No fue posible cargar los detalles de equipos."
+          "No fue posible cargar los detalles de equipos en operación."
       );
     } finally {
       setLoading(false);
@@ -100,6 +132,21 @@ export default function DetallesEquiposOperacionPage() {
     setOpenForm(true);
   };
 
+  const handleGoToDetail = (row: DetalleEquipoOperacionDto) => {
+    if (!row.orsIdentifkeyDeop) return;
+
+    router.push(
+      `/dashboard/control-obras/detalles-equipos-operacion/${row.orsIdentifkeyDeop}`
+    );
+  };
+
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
+
   const handleSubmit = async (data: DetalleEquipoOperacionDto) => {
     try {
       setSaving(true);
@@ -111,6 +158,7 @@ export default function DetallesEquiposOperacionPage() {
           selectedRow.orsPrimarykeyDeop,
           data
         );
+
         setSuccess("Detalle de equipo actualizado correctamente.");
       } else {
         await controlObrasService.detallesEquiposOperacion.create(data);
@@ -119,11 +167,12 @@ export default function DetallesEquiposOperacionPage() {
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
-          "No fue posible guardar el detalle de equipo."
+          "No fue posible guardar el detalle de equipo en operación."
       );
     } finally {
       setSaving(false);
@@ -141,7 +190,7 @@ export default function DetallesEquiposOperacionPage() {
       const primaryKey = confirmAction.row.orsPrimarykeyDeop;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria.");
+        setError("El detalle seleccionado no tiene llave primaria.");
         return;
       }
 
@@ -158,6 +207,7 @@ export default function DetallesEquiposOperacionPage() {
           primaryKey,
           nextStatus
         );
+
         setSuccess("Estado del detalle actualizado correctamente.");
       }
 
@@ -174,14 +224,14 @@ export default function DetallesEquiposOperacionPage() {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
-        title="Detalle equipo operación"
-        subtitle="Registro de equipos asociados a reportes de operación."
+        title="Detalles equipos operación"
+        subtitle="Administra el control operativo de maquinaria, equipos, horómetros, kilometrajes, días trabajados y valores por reporte."
         action={
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
+            startIcon={<PrecisionManufacturingIcon />}
             onClick={handleCreate}
           >
             Crear detalle
@@ -217,79 +267,98 @@ export default function DetallesEquiposOperacionPage() {
         }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin detalles de operación"
-              description="No hay detalles de equipos registrados."
-              actionLabel="Crear detalle"
-              onAction={handleCreate}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código detalle</TableCell>
-                  <TableCell>Reporte operación</TableCell>
-                  <TableCell>Orden</TableCell>
-                  <TableCell>Equipo</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin detalles de equipos"
+        emptyDescription="No hay detalles de equipos en operación registrados para mostrar."
+        emptyActionLabel="Crear detalle"
+        onEmptyAction={handleCreate}
+        minWidth={1700}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código detalle</TableCell>
+              <TableCell>Reporte</TableCell>
+              <TableCell>Orden</TableCell>
+              <TableCell>Proyección</TableCell>
+              <TableCell>Plan semanal</TableCell>
+              <TableCell>Sitio</TableCell>
+              <TableCell>Equipo</TableCell>
+              <TableCell>Tipo equipo</TableCell>
+              <TableCell>Nombre equipo</TableCell>
+              <TableCell>Modelo</TableCell>
+              <TableCell>Registro</TableCell>
+              <TableCell>Fecha trabajo</TableCell>
+              <TableCell>Días</TableCell>
+              <TableCell>Valor unidad</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow
-                    key={row.orsPrimarykeyDeop ?? row.orsIdentifkeyDeop}
+          <TableBody>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
+                <TableCell>{row.orsIdentifkeyDeop}</TableCell>
+                <TableCell>{row.orsIdentifkeyRope}</TableCell>
+                <TableCell>{row.orsIdentifkeyOrde}</TableCell>
+                <TableCell>{row.orsIdentifkeyPsem}</TableCell>
+                <TableCell>{row.orsIdentifkeyPlse}</TableCell>
+                <TableCell>{row.orsIdentifkeyPunt}</TableCell>
+                <TableCell>{row.prvIdentifkeyInve}</TableCell>
+                <TableCell>{row.prvTipoequipoTieq}</TableCell>
+                <TableCell>{row.orsNombrequipoDeop}</TableCell>
+                <TableCell>{row.orsRefermodeloDeop}</TableCell>
+                <TableCell>{row.orsNroregistroDeop}</TableCell>
+                <TableCell>{row.orsFechatrabajoDeop}</TableCell>
+                <TableCell>{formatNumber(row.orsDiatrabajadoDeop)}</TableCell>
+                <TableCell>{formatCurrency(row.orsValorunidadDeop)}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.orsEstadoregDeop} />
+                </TableCell>
+                <TableCell align="right">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      gap: 0.5
+                    }}
                   >
-                    <TableCell>{row.orsIdentifkeyDeop}</TableCell>
-                    <TableCell>{row.orsIdentifkeyRope}</TableCell>
-                    <TableCell>{row.orsIdentifkeyOrde}</TableCell>
-                    <TableCell>{row.prvIdentifkeyInve}</TableCell>
-                    <TableCell>
-                      <StatusChip value={row.orsEstadoregDeop} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => handleEdit(row)}>
-                        Editar
-                      </Button>
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon />}
+                      disabled={!row.orsIdentifkeyDeop}
+                      onClick={() => handleGoToDetail(row)}
+                    >
+                      Detalle
+                    </Button>
 
-                      <Button
-                        size="small"
-                        onClick={() =>
-                          setConfirmAction({ type: "status", row })
-                        }
-                      >
-                        Estado
-                      </Button>
-
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() =>
-                          setConfirmAction({ type: "delete", row })
-                        }
-                      >
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                    <CrudActionButtons
+                      disabled={saving}
+                      onEdit={() => handleEdit(row)}
+                      onChangeStatus={() =>
+                        setConfirmAction({ type: "status", row })
+                      }
+                      onDelete={() =>
+                        setConfirmAction({ type: "delete", row })
+                      }
+                    />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <DetalleEquipoOperacionForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
@@ -303,7 +372,7 @@ export default function DetallesEquiposOperacionPage() {
         }
         message={
           confirmAction?.type === "delete"
-            ? "¿Confirmas que deseas eliminar este detalle de equipo?"
+            ? "¿Confirmas que deseas eliminar este detalle de equipo en operación?"
             : "¿Confirmas que deseas cambiar el estado de este detalle?"
         }
         confirmText={

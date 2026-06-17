@@ -1,77 +1,48 @@
-import axios, { AxiosError, AxiosRequestConfig } from "axios";
+import axios, { AxiosError } from "axios";
 import { ApiErrorResponse } from "../types/common.types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8088";
 
-export const apiClient = axios.create({
+export const http = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json"
   }
 });
 
-function getFriendlyError(error: unknown): ApiErrorResponse {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<any>;
+function getBackendMessage(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
 
-    const status = axiosError.response?.status;
-    const backendMessage =
-      axiosError.response?.data?.message ||
-      axiosError.response?.data?.rspMessage ||
-      axiosError.message;
+  const record = data as Record<string, unknown>;
 
-    if (status === 404) {
-      return {
-        status,
-        message: "No se encontraron registros para la consulta realizada.",
-        detail: backendMessage
-      };
-    }
+  if (typeof record.message === "string") return record.message;
+  if (typeof record.error === "string") return record.error;
+  if (typeof record.rspMessage === "string") return record.rspMessage;
+  if (typeof record.detail === "string") return record.detail;
 
-    if (status === 500) {
-      return {
-        status,
-        message:
-          "No fue posible cargar los datos. Verifica que el microservicio esté activo.",
-        detail: backendMessage
-      };
-    }
-
-    return {
-      status,
-      message: backendMessage || "Ocurrió un error inesperado.",
-      detail: axiosError.response?.data
-    };
-  }
-
-  return {
-    message: "Ocurrió un error inesperado en la aplicación.",
-    detail: error
-  };
+  return undefined;
 }
 
-apiClient.interceptors.response.use(
+http.interceptors.response.use(
   response => response,
-  error => {
-    const friendlyError = getFriendlyError(error);
+  (error: AxiosError) => {
+    const status = error.response?.status;
+    const backendMessage = getBackendMessage(error.response?.data);
 
-    if (friendlyError.status !== 404) {
+    const friendlyError: ApiErrorResponse = {
+      status,
+      message:
+        backendMessage ||
+        "No fue posible cargar los datos. Verifica que el microservicio esté activo.",
+      detail: error.response?.data
+    };
+
+    if (status !== 404) {
       console.error("API Error:", friendlyError);
     }
 
     return Promise.reject(friendlyError);
   }
 );
-
-export const http = {
-  get: <T>(url: string, config?: AxiosRequestConfig) =>
-    apiClient.get<T>(url, config).then(response => response.data),
-
-  post: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-    apiClient.post<T>(url, data, config).then(response => response.data),
-
-  put: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-    apiClient.put<T>(url, data, config).then(response => response.data)
-};

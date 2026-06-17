@@ -5,8 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -14,13 +12,14 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import BusinessIcon from "@mui/icons-material/Business";
+
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../components/common/LoadingBox";
-import { EmptyState } from "../../../components/common/EmptyState";
 import { StatusChip } from "../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../components/common/CrudActionButtons";
 import { ProveedorForm } from "../../../components/proveedores/ProveedorForm";
 import { proveedoresService } from "../../../services/proveedores.service";
 import { ProveedorDto } from "../../../types/proveedores.types";
@@ -53,10 +52,10 @@ export default function ProveedoresPage() {
         row.prvIdentifkeyMprv,
         row.prvNumeronitMprv,
         row.prvRazonsocialMprv,
-        row.sisTiposociedadTpso,
-        row.sisCodactividadCiiu,
-        row.prvCorreoMprv,
+        row.prvObjetosocialMprv,
+        row.prvDireccionMprv,
         row.prvTelefonoMprv,
+        row.prvCorreoMprv,
         row.prvEstadoregMprv
       ]
         .filter(Boolean)
@@ -78,7 +77,10 @@ export default function ProveedoresPage() {
 
       setRows(response.rspData ?? []);
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible cargar los proveedores.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible cargar los proveedores."
+      );
     } finally {
       setLoading(false);
     }
@@ -98,6 +100,13 @@ export default function ProveedoresPage() {
     setOpenForm(true);
   };
 
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
+
   const handleSubmit = async (data: ProveedorDto) => {
     try {
       setSaving(true);
@@ -114,9 +123,13 @@ export default function ProveedoresPage() {
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible guardar el proveedor.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible guardar el proveedor."
+      );
     } finally {
       setSaving(false);
     }
@@ -133,7 +146,7 @@ export default function ProveedoresPage() {
       const primaryKey = confirmAction.row.prvPrimarykeyMprv;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria.");
+        setError("El proveedor seleccionado no tiene llave primaria.");
         return;
       }
 
@@ -143,7 +156,9 @@ export default function ProveedoresPage() {
       }
 
       if (confirmAction.type === "status") {
-        const nextStatus = confirmAction.row.prvEstadoregMprv === "1" ? "2" : "1";
+        const nextStatus =
+          confirmAction.row.prvEstadoregMprv === "1" ? "2" : "1";
+
         await proveedoresService.changeStatus(primaryKey, nextStatus);
         setSuccess("Estado del proveedor actualizado correctamente.");
       }
@@ -151,26 +166,42 @@ export default function ProveedoresPage() {
       setConfirmAction(null);
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible ejecutar la acción.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible ejecutar la acción."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
         title="Proveedores"
-        subtitle="Gestión de proveedores de maquinaria, suministros y servicios."
+        subtitle="Administra proveedores, terceros, empresas de maquinaria, materiales, servicios y suministros asociados a la operación de obra."
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          <Button
+            variant="contained"
+            startIcon={<BusinessIcon />}
+            onClick={handleCreate}
+          >
             Crear proveedor
           </Button>
         }
       />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
 
       <PageToolbar
         left={
@@ -188,90 +219,96 @@ export default function ProveedoresPage() {
         }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin proveedores"
-              description="No hay proveedores registrados."
-              actionLabel="Crear proveedor"
-              onAction={handleCreate}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código</TableCell>
-                  <TableCell>NIT</TableCell>
-                  <TableCell>Razón social</TableCell>
-                  <TableCell>Tipo sociedad</TableCell>
-                  <TableCell>CIIU</TableCell>
-                  <TableCell>Teléfono</TableCell>
-                  <TableCell>Correo</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin proveedores"
+        emptyDescription="No hay proveedores registrados para mostrar."
+        emptyActionLabel="Crear proveedor"
+        onEmptyAction={handleCreate}
+        minWidth={1200}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código</TableCell>
+              <TableCell>NIT</TableCell>
+              <TableCell>Razón social</TableCell>
+              <TableCell>Objeto social</TableCell>
+              <TableCell>Dirección</TableCell>
+              <TableCell>Teléfono</TableCell>
+              <TableCell>Correo</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow key={row.prvPrimarykeyMprv ?? row.prvIdentifkeyMprv}>
-                    <TableCell>{row.prvIdentifkeyMprv}</TableCell>
-                    <TableCell>{row.prvNumeronitMprv}</TableCell>
-                    <TableCell>{row.prvRazonsocialMprv}</TableCell>
-                    <TableCell>{row.sisTiposociedadTpso}</TableCell>
-                    <TableCell>{row.sisCodactividadCiiu}</TableCell>
-                    <TableCell>{row.prvTelefonoMprv}</TableCell>
-                    <TableCell>{row.prvCorreoMprv}</TableCell>
-                    <TableCell>
-                      <StatusChip value={row.prvEstadoregMprv} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => handleEdit(row)}>
-                        Editar
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => setConfirmAction({ type: "status", row })}
-                      >
-                        Estado
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => setConfirmAction({ type: "delete", row })}
-                      >
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          <TableBody>
+            {filteredRows.map(row => (
+              <TableRow key={row.prvPrimarykeyMprv ?? row.prvIdentifkeyMprv}>
+                <TableCell>{row.prvIdentifkeyMprv}</TableCell>
+                <TableCell>{row.prvNumeronitMprv}</TableCell>
+                <TableCell>{row.prvRazonsocialMprv}</TableCell>
+                <TableCell>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      maxWidth: 300,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      verticalAlign: "middle"
+                    }}
+                  >
+                    {row.prvObjetosocialMprv}
+                  </Box>
+                </TableCell>
+                <TableCell>{row.prvDireccionMprv}</TableCell>
+                <TableCell>{row.prvTelefonoMprv}</TableCell>
+                <TableCell>{row.prvCorreoMprv}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.prvEstadoregMprv} />
+                </TableCell>
+                <TableCell align="right">
+                  <CrudActionButtons
+                    disabled={saving}
+                    onEdit={() => handleEdit(row)}
+                    onChangeStatus={() =>
+                      setConfirmAction({ type: "status", row })
+                    }
+                    onDelete={() => setConfirmAction({ type: "delete", row })}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <ProveedorForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
       <ConfirmDialog
         open={!!confirmAction}
         loading={saving}
-        title={confirmAction?.type === "delete" ? "Eliminar proveedor" : "Cambiar estado"}
+        title={
+          confirmAction?.type === "delete"
+            ? "Eliminar proveedor"
+            : "Cambiar estado"
+        }
         message={
           confirmAction?.type === "delete"
             ? "¿Confirmas que deseas eliminar este proveedor?"
             : "¿Confirmas que deseas cambiar el estado de este proveedor?"
         }
-        confirmText={confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"}
+        confirmText={
+          confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
+        }
         onClose={() => setConfirmAction(null)}
         onConfirm={executeConfirmAction}
       />

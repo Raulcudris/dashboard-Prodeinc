@@ -5,23 +5,23 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
-  TextField,
-  Typography
+  TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useRouter } from "next/navigation";
+
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../components/common/LoadingBox";
-import { EmptyState } from "../../../components/common/EmptyState";
 import { StatusChip } from "../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../components/common/CrudActionButtons";
 import { OrdenServicioForm } from "../../../components/control-obras/OrdenServicioForm";
 import { controlObrasService } from "../../../services/controlObras.service";
 import { OrdenServicioDto } from "../../../types/controlObras.types";
@@ -31,7 +31,21 @@ type ConfirmAction =
   | { type: "status"; row: OrdenServicioDto }
   | null;
 
+function buildRowKey(row: OrdenServicioDto, index: number) {
+  return (
+    row.orsPrimarykeyOrde ??
+    row.orsIdentifkeyOrde ??
+    `${row.orsCodservicioSebs ?? "ORDE"}-${index}`
+  );
+}
+
+function formatCurrency(value?: number) {
+  return `$${new Intl.NumberFormat("es-CO").format(value ?? 0)}`;
+}
+
 export default function OrdenesServicioPage() {
+  const router = useRouter();
+
   const [rows, setRows] = useState<OrdenServicioDto[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,18 +60,20 @@ export default function OrdenesServicioPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) {
-      return rows;
-    }
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.orsIdentifkeyOrde,
         row.orsCodservicioSebs,
         row.orsServiceventOrde,
         row.orsServiclugarOrde,
+        row.orsServicobjetoOrde,
         row.prvIdentifkeyMprv,
+        row.prvIdentifkeyRelg,
+        row.orsTiporegistOrde,
         row.orsEstadoregOrde
       ]
         .filter(Boolean)
@@ -77,9 +93,12 @@ export default function OrdenesServicioPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible cargar las órdenes.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible cargar las órdenes de servicio."
+      );
     } finally {
       setLoading(false);
     }
@@ -99,6 +118,19 @@ export default function OrdenesServicioPage() {
     setOpenForm(true);
   };
 
+  const handleGoToDetail = (row: OrdenServicioDto) => {
+    if (!row.orsIdentifkeyOrde) return;
+
+    router.push(`/dashboard/ordenes/${row.orsIdentifkeyOrde}`);
+  };
+
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
+
   const handleSubmit = async (data: OrdenServicioDto) => {
     try {
       setSaving(true);
@@ -110,17 +142,22 @@ export default function OrdenesServicioPage() {
           selectedRow.orsPrimarykeyOrde,
           data
         );
-        setSuccess("Orden actualizada correctamente.");
+
+        setSuccess("Orden de servicio actualizada correctamente.");
       } else {
         await controlObrasService.ordenes.create(data);
-        setSuccess("Orden creada correctamente.");
+        setSuccess("Orden de servicio creada correctamente.");
       }
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible guardar la orden.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible guardar la orden de servicio."
+      );
     } finally {
       setSaving(false);
     }
@@ -134,54 +171,72 @@ export default function OrdenesServicioPage() {
       setError(null);
       setSuccess(null);
 
-      const row = confirmAction.row;
-      const primaryKey = row.orsPrimarykeyOrde;
+      const primaryKey = confirmAction.row.orsPrimarykeyOrde;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria para ejecutar la acción.");
+        setError("La orden seleccionada no tiene llave primaria.");
         return;
       }
 
       if (confirmAction.type === "delete") {
         await controlObrasService.ordenes.delete(primaryKey);
-        setSuccess("Orden eliminada correctamente.");
+        setSuccess("Orden de servicio eliminada correctamente.");
       }
 
       if (confirmAction.type === "status") {
-        const nextStatus = row.orsEstadoregOrde === "1" ? "2" : "1";
+        const nextStatus =
+          confirmAction.row.orsEstadoregOrde === "1" ? "2" : "1";
+
         await controlObrasService.ordenes.changeStatus(primaryKey, nextStatus);
+
         setSuccess("Estado de la orden actualizado correctamente.");
       }
 
       setConfirmAction(null);
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible ejecutar la acción.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible ejecutar la acción."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
         title="Órdenes de servicio"
-        subtitle="Registro y administración de órdenes de servicio para iniciar el flujo de obra."
+        subtitle="Administra las órdenes base de obra civil, valores, fechas, proveedores, lugares y objetos contractuales."
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          <Button
+            variant="contained"
+            startIcon={<AssignmentIcon />}
+            onClick={handleCreate}
+          >
             Crear orden
           </Button>
         }
       />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
 
       <PageToolbar
         left={
           <TextField
             size="small"
-            label="Buscar"
+            label="Buscar orden"
             value={filter}
             onChange={event => setFilter(event.target.value)}
           />
@@ -193,77 +248,106 @@ export default function OrdenesServicioPage() {
         }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin órdenes"
-              description="No hay órdenes de servicio para mostrar."
-              actionLabel="Crear orden"
-              onAction={handleCreate}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código</TableCell>
-                  <TableCell>Servicio</TableCell>
-                  <TableCell>Lugar</TableCell>
-                  <TableCell>Proveedor</TableCell>
-                  <TableCell>Fecha inicio</TableCell>
-                  <TableCell>Fecha fin</TableCell>
-                  <TableCell>Valor total</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin órdenes de servicio"
+        emptyDescription="No hay órdenes de servicio registradas para mostrar."
+        emptyActionLabel="Crear orden"
+        onEmptyAction={handleCreate}
+        minWidth={1520}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código orden</TableCell>
+              <TableCell>Código servicio</TableCell>
+              <TableCell>Fecha autorización</TableCell>
+              <TableCell>Evento / servicio</TableCell>
+              <TableCell>Lugar</TableCell>
+              <TableCell>Objeto</TableCell>
+              <TableCell>Inicio plan</TableCell>
+              <TableCell>Fin plan</TableCell>
+              <TableCell>Proveedor</TableCell>
+              <TableCell>Valor base</TableCell>
+              <TableCell>IVA</TableCell>
+              <TableCell>Total</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
+                <TableCell>{row.orsIdentifkeyOrde}</TableCell>
+                <TableCell>{row.orsCodservicioSebs}</TableCell>
+                <TableCell>{row.orsAutorifechaOrde}</TableCell>
+                <TableCell>{row.orsServiceventOrde}</TableCell>
+                <TableCell>{row.orsServiclugarOrde}</TableCell>
+                <TableCell>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      maxWidth: 320,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      verticalAlign: "middle"
+                    }}
+                  >
+                    {row.orsServicobjetoOrde}
+                  </Box>
+                </TableCell>
+                <TableCell>{row.orsPlanfechiniOrde}</TableCell>
+                <TableCell>{row.orsPlanfechfinOrde}</TableCell>
+                <TableCell>{row.prvIdentifkeyMprv}</TableCell>
+                <TableCell>{formatCurrency(row.orsValorbaseOrde)}</TableCell>
+                <TableCell>{formatCurrency(row.orsValordeivaOrde)}</TableCell>
+                <TableCell>{formatCurrency(row.orsValortotalOrde)}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.orsEstadoregOrde} />
+                </TableCell>
+                <TableCell align="right">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      gap: 0.5
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon />}
+                      disabled={!row.orsIdentifkeyOrde}
+                      onClick={() => handleGoToDetail(row)}
+                    >
+                      Detalle
+                    </Button>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow key={row.orsPrimarykeyOrde ?? row.orsIdentifkeyOrde}>
-                    <TableCell>{row.orsIdentifkeyOrde}</TableCell>
-                    <TableCell>{row.orsCodservicioSebs || row.orsServiceventOrde}</TableCell>
-                    <TableCell>{row.orsServiclugarOrde}</TableCell>
-                    <TableCell>{row.prvIdentifkeyMprv}</TableCell>
-                    <TableCell>{row.orsPlanfechiniOrde}</TableCell>
-                    <TableCell>{row.orsPlanfechfinOrde}</TableCell>
-                    <TableCell>{row.orsValortotalOrde ?? 0}</TableCell>
-                    <TableCell>
-                      <StatusChip value={row.orsEstadoregOrde} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => handleEdit(row)}>
-                        Editar
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => setConfirmAction({ type: "status", row })}
-                      >
-                        Estado
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => setConfirmAction({ type: "delete", row })}
-                      >
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                    <CrudActionButtons
+                      disabled={saving}
+                      onEdit={() => handleEdit(row)}
+                      onChangeStatus={() =>
+                        setConfirmAction({ type: "status", row })
+                      }
+                      onDelete={() =>
+                        setConfirmAction({ type: "delete", row })
+                      }
+                    />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <OrdenServicioForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
@@ -272,7 +356,7 @@ export default function OrdenesServicioPage() {
         loading={saving}
         title={
           confirmAction?.type === "delete"
-            ? "Eliminar orden"
+            ? "Eliminar orden de servicio"
             : "Cambiar estado"
         }
         message={
@@ -281,9 +365,7 @@ export default function OrdenesServicioPage() {
             : "¿Confirmas que deseas cambiar el estado de esta orden?"
         }
         confirmText={
-          confirmAction?.type === "delete"
-            ? "Eliminar"
-            : "Cambiar estado"
+          confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
         }
         onClose={() => setConfirmAction(null)}
         onConfirm={executeConfirmAction}

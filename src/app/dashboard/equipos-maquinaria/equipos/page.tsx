@@ -5,9 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
-  Chip,
   Table,
   TableBody,
   TableCell,
@@ -15,24 +12,25 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import InventoryIcon from "@mui/icons-material/Inventory";
+
 import { PageHeader } from "../../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../../components/common/LoadingBox";
-import { EmptyState } from "../../../../components/common/EmptyState";
 import { StatusChip } from "../../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../../components/common/CrudActionButtons";
 import { EquipoForm } from "../../../../components/equipos/EquipoForm";
-import { equiposService } from "../../../../services/equipos.service";
+import { equiposMaquinariaService } from "../../../../services/equipos.service";
 import { EquipoDto } from "../../../../types/equipos.types";
 
 type ConfirmAction =
   | { type: "delete"; row: EquipoDto }
   | { type: "status"; row: EquipoDto }
-  | { type: "available"; row: EquipoDto }
+  | { type: "disponible"; row: EquipoDto }
   | null;
 
-export default function InventarioEquiposPage() {
+export default function EquiposPage() {
   const [rows, setRows] = useState<EquipoDto[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,7 +57,8 @@ export default function InventarioEquiposPage() {
         row.prvRefermodeloInve,
         row.prvEquipoestadoInve,
         row.prvEquipoactivoInve,
-        row.prvEstadoregInve
+        row.prvEstadoregInve,
+        row.prvDescripcionInve
       ]
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(text))
@@ -71,7 +70,7 @@ export default function InventarioEquiposPage() {
       setLoading(true);
       setError(null);
 
-      const response = await equiposService.equipos.getPages({
+      const response = await equiposMaquinariaService.equipos.getPages({
         currentPage: 1,
         pageSize: 50,
         parameter: "TEXT",
@@ -82,7 +81,7 @@ export default function InventarioEquiposPage() {
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
-          "No fue posible cargar los equipos."
+          "No fue posible cargar el inventario de equipos."
       );
     } finally {
       setLoading(false);
@@ -103,6 +102,13 @@ export default function InventarioEquiposPage() {
     setOpenForm(true);
   };
 
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
+
   const handleSubmit = async (data: EquipoDto) => {
     try {
       setSaving(true);
@@ -110,15 +116,20 @@ export default function InventarioEquiposPage() {
       setSuccess(null);
 
       if (selectedRow?.prvPrimarykeyInve) {
-        await equiposService.equipos.update(selectedRow.prvPrimarykeyInve, data);
+        await equiposMaquinariaService.equipos.update(
+          selectedRow.prvPrimarykeyInve,
+          data
+        );
+
         setSuccess("Equipo actualizado correctamente.");
       } else {
-        await equiposService.equipos.create(data);
+        await equiposMaquinariaService.equipos.create(data);
         setSuccess("Equipo creado correctamente.");
       }
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
       setError(
@@ -138,31 +149,39 @@ export default function InventarioEquiposPage() {
       setError(null);
       setSuccess(null);
 
-      const row = confirmAction.row;
-      const primaryKey = row.prvPrimarykeyInve;
+      const primaryKey = confirmAction.row.prvPrimarykeyInve;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria.");
+        setError("El equipo seleccionado no tiene llave primaria.");
         return;
       }
 
       if (confirmAction.type === "delete") {
-        await equiposService.equipos.delete(primaryKey);
+        await equiposMaquinariaService.equipos.delete(primaryKey);
         setSuccess("Equipo eliminado correctamente.");
       }
 
       if (confirmAction.type === "status") {
-        const nextStatus = row.prvEstadoregInve === "1" ? "2" : "1";
-        await equiposService.equipos.changeStatus(primaryKey, nextStatus);
+        const nextStatus =
+          confirmAction.row.prvEstadoregInve === "1" ? "2" : "1";
+
+        await equiposMaquinariaService.equipos.changeStatus(
+          primaryKey,
+          nextStatus
+        );
+
         setSuccess("Estado del equipo actualizado correctamente.");
       }
 
-      if (confirmAction.type === "available") {
-        const nextAvailable = row.prvEquipoactivoInve === "1" ? "2" : "1";
-        await equiposService.equipos.changeDisponible(
+      if (confirmAction.type === "disponible") {
+        const nextDisponible =
+          confirmAction.row.prvEquipoactivoInve === "1" ? "2" : "1";
+
+        await equiposMaquinariaService.equipos.changeDisponible(
           primaryKey,
-          nextAvailable
+          nextDisponible
         );
+
         setSuccess("Disponibilidad del equipo actualizada correctamente.");
       }
 
@@ -179,12 +198,16 @@ export default function InventarioEquiposPage() {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
         title="Inventario de equipos"
-        subtitle="Control de maquinaria, vehículos, herramientas y disponibilidad operativa."
+        subtitle="Administra maquinaria amarilla, vehículos, herramientas y equipos disponibles para la operación de obra."
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          <Button
+            variant="contained"
+            startIcon={<InventoryIcon />}
+            onClick={handleCreate}
+          >
             Crear equipo
           </Button>
         }
@@ -218,113 +241,91 @@ export default function InventarioEquiposPage() {
         }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin equipos"
-              description="No hay equipos o maquinaria registrados."
-              actionLabel="Crear equipo"
-              onAction={handleCreate}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código equipo</TableCell>
-                  <TableCell>Proveedor</TableCell>
-                  <TableCell>Tipo</TableCell>
-                  <TableCell>Nombre</TableCell>
-                  <TableCell>Modelo</TableCell>
-                  <TableCell>Estado operativo</TableCell>
-                  <TableCell>Disponible</TableCell>
-                  <TableCell>Estado registro</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin equipos"
+        emptyDescription="No hay equipos registrados para mostrar."
+        emptyActionLabel="Crear equipo"
+        onEmptyAction={handleCreate}
+        minWidth={1250}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código equipo</TableCell>
+              <TableCell>Proveedor</TableCell>
+              <TableCell>Tipo equipo</TableCell>
+              <TableCell>Nombre</TableCell>
+              <TableCell>Referencia / modelo</TableCell>
+              <TableCell>Estado operativo</TableCell>
+              <TableCell>Disponible</TableCell>
+              <TableCell>Estado registro</TableCell>
+              <TableCell>Descripción</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow
-                    key={row.prvPrimarykeyInve ?? row.prvIdentifkeyInve}
+          <TableBody>
+            {filteredRows.map(row => (
+              <TableRow key={row.prvPrimarykeyInve ?? row.prvIdentifkeyInve}>
+                <TableCell>{row.prvIdentifkeyInve}</TableCell>
+                <TableCell>{row.prvIdentifkeyMprv}</TableCell>
+                <TableCell>{row.prvTipoequipoTieq}</TableCell>
+                <TableCell>{row.prvNombrequipoInve}</TableCell>
+                <TableCell>{row.prvRefermodeloInve}</TableCell>
+                <TableCell>{row.prvEquipoestadoInve}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.prvEquipoactivoInve} />
+                </TableCell>
+                <TableCell>
+                  <StatusChip value={row.prvEstadoregInve} />
+                </TableCell>
+                <TableCell>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      maxWidth: 280,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      verticalAlign: "middle"
+                    }}
                   >
-                    <TableCell>{row.prvIdentifkeyInve}</TableCell>
-                    <TableCell>{row.prvIdentifkeyMprv}</TableCell>
-                    <TableCell>{row.prvTipoequipoTieq}</TableCell>
-                    <TableCell>{row.prvNombrequipoInve}</TableCell>
-                    <TableCell>{row.prvRefermodeloInve}</TableCell>
-                    <TableCell>{row.prvEquipoestadoInve}</TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={
-                          row.prvEquipoactivoInve === "1"
-                            ? "Disponible"
-                            : "No disponible"
-                        }
-                        color={
-                          row.prvEquipoactivoInve === "1"
-                            ? "success"
-                            : "default"
-                        }
-                        variant={
-                          row.prvEquipoactivoInve === "1"
-                            ? "filled"
-                            : "outlined"
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <StatusChip value={row.prvEstadoregInve} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => handleEdit(row)}>
-                        Editar
-                      </Button>
+                    {row.prvDescripcionInve}
+                  </Box>
+                </TableCell>
+                <TableCell align="right">
+                  <CrudActionButtons
+                    disabled={saving}
+                    onEdit={() => handleEdit(row)}
+                    statusLabel="Estado"
+                    onChangeStatus={() =>
+                      setConfirmAction({ type: "status", row })
+                    }
+                    onDelete={() => setConfirmAction({ type: "delete", row })}
+                  />
 
-                      <Button
-                        size="small"
-                        onClick={() =>
-                          setConfirmAction({ type: "available", row })
-                        }
-                      >
-                        Disponible
-                      </Button>
-
-                      <Button
-                        size="small"
-                        onClick={() =>
-                          setConfirmAction({ type: "status", row })
-                        }
-                      >
-                        Estado
-                      </Button>
-
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() =>
-                          setConfirmAction({ type: "delete", row })
-                        }
-                      >
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                  <Button
+                    size="small"
+                    disabled={saving}
+                    onClick={() => setConfirmAction({ type: "disponible", row })}
+                    sx={{ ml: 0.5 }}
+                  >
+                    Disponible
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <EquipoForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
@@ -334,21 +335,21 @@ export default function InventarioEquiposPage() {
         title={
           confirmAction?.type === "delete"
             ? "Eliminar equipo"
-            : confirmAction?.type === "available"
+            : confirmAction?.type === "disponible"
               ? "Cambiar disponibilidad"
               : "Cambiar estado"
         }
         message={
           confirmAction?.type === "delete"
             ? "¿Confirmas que deseas eliminar este equipo?"
-            : confirmAction?.type === "available"
+            : confirmAction?.type === "disponible"
               ? "¿Confirmas que deseas cambiar la disponibilidad de este equipo?"
               : "¿Confirmas que deseas cambiar el estado de este equipo?"
         }
         confirmText={
           confirmAction?.type === "delete"
             ? "Eliminar"
-            : confirmAction?.type === "available"
+            : confirmAction?.type === "disponible"
               ? "Cambiar disponibilidad"
               : "Cambiar estado"
         }

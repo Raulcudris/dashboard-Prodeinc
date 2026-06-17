@@ -1,12 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -14,128 +12,232 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import PlaylistAddCheckIcon from "@mui/icons-material/PlaylistAddCheck";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useRouter } from "next/navigation";
+
 import { PageHeader } from "../../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../../components/common/PageToolbar";
-import { EmptyState } from "../../../../components/common/EmptyState";
 import { StatusChip } from "../../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
-import {
-  ActaModificacionDetalleForm,
-  ActaModificacionDetalleFormValues
-} from "../../../../components/control-obras/ActaModificacionDetalleForm";
+import { CrudTableCard } from "../../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../../components/common/CrudActionButtons";
+import { ActaModificacionDetalleForm } from "../../../../components/control-obras/ActaModificacionDetalleForm";
+import { controlObrasService } from "../../../../services/controlObras.service";
+import { ActaModificacionDetalleDto } from "../../../../types/controlObras.types";
 
 type ConfirmAction =
-  | { type: "delete"; row: ActaModificacionDetalleFormValues }
-  | { type: "status"; row: ActaModificacionDetalleFormValues }
+  | { type: "delete"; row: ActaModificacionDetalleDto }
+  | { type: "status"; row: ActaModificacionDetalleDto }
   | null;
 
+function buildRowKey(row: ActaModificacionDetalleDto, index: number) {
+  return (
+    row.orsPrimarykeyAcdt ??
+    row.orsIdentifkeyAcdt ??
+    `${row.orsIdentifkeyAcmo ?? "ACMO"}-${row.orsIdentifkeyOrde ?? "ORDE"}-${index}`
+  );
+}
+
+function formatCurrency(value?: number) {
+  return `$${new Intl.NumberFormat("es-CO").format(value ?? 0)}`;
+}
+
+function formatNumber(value?: number) {
+  return new Intl.NumberFormat("es-CO").format(value ?? 0);
+}
+
 export default function ActasModificacionDetallesPage() {
-  const [rows, setRows] = useState<ActaModificacionDetalleFormValues[]>([]);
+  const router = useRouter();
+
+  const [rows, setRows] = useState<ActaModificacionDetalleDto[]>([]);
   const [filter, setFilter] = useState("");
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [openForm, setOpenForm] = useState(false);
   const [selectedRow, setSelectedRow] =
-    useState<ActaModificacionDetalleFormValues | null>(null);
+    useState<ActaModificacionDetalleDto | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
-        row.detalleKey,
-        row.actaKey,
-        row.tipoEquipoKey,
-        row.descripcion,
-        row.estado
+        row.orsIdentifkeyAcdt,
+        row.orsIdentifkeyAcmo,
+        row.orsIdentifkeyOrde,
+        row.orsIdentifkeyPltr,
+        row.orsIdentifkeyPlse,
+        row.orsIdentifkeyPunt,
+        row.orsDescripcionAcdt,
+        row.orsUnidadAcdt,
+        row.orsObservacionAcdt,
+        row.orsTiporegistAcdt,
+        row.orsEstadoregAcdt
       ]
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(text))
     );
   }, [rows, filter]);
 
+  const loadRows = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response =
+        await controlObrasService.actasModificacionDetalles.getPages({
+          currentPage: 1,
+          pageSize: 50,
+          parameter: "TEXT",
+          filter: ""
+        });
+
+      setRows((response.rspData ?? []).filter(Boolean));
+    } catch (err) {
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible cargar los detalles de actas de modificación."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadRows();
+  }, []);
+
   const handleCreate = () => {
     setSelectedRow(null);
     setOpenForm(true);
   };
 
-  const handleEdit = (row: ActaModificacionDetalleFormValues) => {
+  const handleEdit = (row: ActaModificacionDetalleDto) => {
     setSelectedRow(row);
     setOpenForm(true);
   };
 
-  const handleSubmit = async (data: ActaModificacionDetalleFormValues) => {
-    setSaving(true);
+  const handleGoToDetail = (row: ActaModificacionDetalleDto) => {
+    if (!row.orsIdentifkeyAcdt) return;
 
-    if (selectedRow) {
-      setRows(prev =>
-        prev.map(row =>
-          row.detalleKey === selectedRow.detalleKey ? data : row
-        )
-      );
-      setSuccess("Detalle actualizado en la vista. Pendiente conexión backend.");
-    } else {
-      setRows(prev => [...prev, data]);
-      setSuccess("Detalle creado en la vista. Pendiente conexión backend.");
-    }
+    router.push(
+      `/dashboard/control-obras/actas-modificacion-detalles/${row.orsIdentifkeyAcdt}`
+    );
+  };
+
+  const handleCloseForm = () => {
+    if (saving) return;
 
     setOpenForm(false);
     setSelectedRow(null);
-    setSaving(false);
+  };
+
+  const handleSubmit = async (data: ActaModificacionDetalleDto) => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      if (selectedRow?.orsPrimarykeyAcdt) {
+        await controlObrasService.actasModificacionDetalles.update(
+          selectedRow.orsPrimarykeyAcdt,
+          data
+        );
+
+        setSuccess("Detalle de acta actualizado correctamente.");
+      } else {
+        await controlObrasService.actasModificacionDetalles.create(data);
+        setSuccess("Detalle de acta creado correctamente.");
+      }
+
+      setOpenForm(false);
+      setSelectedRow(null);
+
+      await loadRows();
+    } catch (err) {
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible guardar el detalle de acta."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const executeConfirmAction = async () => {
     if (!confirmAction) return;
 
-    setSaving(true);
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
 
-    if (confirmAction.type === "delete") {
-      setRows(prev =>
-        prev.filter(row => row.detalleKey !== confirmAction.row.detalleKey)
+      const primaryKey = confirmAction.row.orsPrimarykeyAcdt;
+
+      if (!primaryKey) {
+        setError("El detalle seleccionado no tiene llave primaria.");
+        return;
+      }
+
+      if (confirmAction.type === "delete") {
+        await controlObrasService.actasModificacionDetalles.delete(primaryKey);
+        setSuccess("Detalle de acta eliminado correctamente.");
+      }
+
+      if (confirmAction.type === "status") {
+        const nextStatus =
+          confirmAction.row.orsEstadoregAcdt === "1" ? "2" : "1";
+
+        await controlObrasService.actasModificacionDetalles.changeStatus(
+          primaryKey,
+          nextStatus
+        );
+
+        setSuccess("Estado del detalle actualizado correctamente.");
+      }
+
+      setConfirmAction(null);
+      await loadRows();
+    } catch (err) {
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible ejecutar la acción."
       );
-      setSuccess("Detalle eliminado de la vista. Pendiente conexión backend.");
+    } finally {
+      setSaving(false);
     }
-
-    if (confirmAction.type === "status") {
-      setRows(prev =>
-        prev.map(row =>
-          row.detalleKey === confirmAction.row.detalleKey
-            ? {
-                ...row,
-                estado: row.estado === "1" ? "2" : "1"
-              }
-            : row
-        )
-      );
-      setSuccess("Estado cambiado en la vista. Pendiente conexión backend.");
-    }
-
-    setConfirmAction(null);
-    setSaving(false);
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
-        title="Detalle actas"
-        subtitle="Detalle de equipos, cantidades y valores asociados a actas de modificación."
+        title="Detalles de actas de modificación"
+        subtitle="Administra los ítems modificados por acta: cantidades, unidades, valores y planes afectados."
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          <Button
+            variant="contained"
+            startIcon={<PlaylistAddCheckIcon />}
+            onClick={handleCreate}
+          >
             Crear detalle
           </Button>
         }
       />
 
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Esta pantalla está preparada en frontend. Falta confirmar endpoints de
-        detalles de actas en el backend actualizado.
-      </Alert>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       {success && (
         <Alert severity="success" sx={{ mb: 2 }}>
@@ -153,87 +255,129 @@ export default function ActasModificacionDetallesPage() {
           />
         }
         right={
-          <Button variant="outlined" onClick={() => setRows([...rows])}>
+          <Button variant="outlined" onClick={loadRows}>
             Actualizar
           </Button>
         }
       />
 
-      <Card>
-        <CardContent>
-          {filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin detalles"
-              description="No hay detalles de actas registrados en la vista."
-              actionLabel="Crear detalle"
-              onAction={handleCreate}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código detalle</TableCell>
-                  <TableCell>Acta</TableCell>
-                  <TableCell>Tipo equipo</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell>Cantidad</TableCell>
-                  <TableCell>Valor unitario</TableCell>
-                  <TableCell>Valor total</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin detalles de actas"
+        emptyDescription="No hay detalles de actas de modificación registrados para mostrar."
+        emptyActionLabel="Crear detalle"
+        onEmptyAction={handleCreate}
+        minWidth={1550}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código detalle</TableCell>
+              <TableCell>Acta</TableCell>
+              <TableCell>Orden</TableCell>
+              <TableCell>Sitio</TableCell>
+              <TableCell>Plan trabajo</TableCell>
+              <TableCell>Plan semanal</TableCell>
+              <TableCell>Descripción</TableCell>
+              <TableCell>Unidad</TableCell>
+              <TableCell>Cant. actual</TableCell>
+              <TableCell>Cant. modificada</TableCell>
+              <TableCell>Valor unidad</TableCell>
+              <TableCell>Valor actual</TableCell>
+              <TableCell>Valor modificado</TableCell>
+              <TableCell>Valor total</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow key={row.detalleKey}>
-                    <TableCell>{row.detalleKey}</TableCell>
-                    <TableCell>{row.actaKey}</TableCell>
-                    <TableCell>{row.tipoEquipoKey}</TableCell>
-                    <TableCell>{row.descripcion}</TableCell>
-                    <TableCell>{row.cantidad}</TableCell>
-                    <TableCell>{row.valorUnitario}</TableCell>
-                    <TableCell>{row.valorTotal}</TableCell>
-                    <TableCell>
-                      <StatusChip value={row.estado} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => handleEdit(row)}>
-                        Editar
-                      </Button>
+          <TableBody>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
+                <TableCell>{row.orsIdentifkeyAcdt}</TableCell>
+                <TableCell>{row.orsIdentifkeyAcmo}</TableCell>
+                <TableCell>{row.orsIdentifkeyOrde}</TableCell>
+                <TableCell>{row.orsIdentifkeyPunt}</TableCell>
+                <TableCell>{row.orsIdentifkeyPltr}</TableCell>
+                <TableCell>{row.orsIdentifkeyPlse}</TableCell>
+                <TableCell>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      maxWidth: 260,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      verticalAlign: "middle"
+                    }}
+                  >
+                    {row.orsDescripcionAcdt}
+                  </Box>
+                </TableCell>
+                <TableCell>{row.orsUnidadAcdt}</TableCell>
+                <TableCell>
+                  {formatNumber(row.orsCantidadactualAcdt)}
+                </TableCell>
+                <TableCell>
+                  {formatNumber(row.orsCantidadmodificadaAcdt)}
+                </TableCell>
+                <TableCell>
+                  {formatCurrency(row.orsValorunidadAcdt)}
+                </TableCell>
+                <TableCell>
+                  {formatCurrency(row.orsValoractualAcdt)}
+                </TableCell>
+                <TableCell>
+                  {formatCurrency(row.orsValormodificadoAcdt)}
+                </TableCell>
+                <TableCell>
+                  {formatCurrency(row.orsValortotalAcdt)}
+                </TableCell>
+                <TableCell>
+                  <StatusChip value={row.orsEstadoregAcdt} />
+                </TableCell>
+                <TableCell align="right">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      gap: 0.5
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon />}
+                      disabled={!row.orsIdentifkeyAcdt}
+                      onClick={() => handleGoToDetail(row)}
+                    >
+                      Detalle
+                    </Button>
 
-                      <Button
-                        size="small"
-                        onClick={() =>
-                          setConfirmAction({ type: "status", row })
-                        }
-                      >
-                        Estado
-                      </Button>
-
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() =>
-                          setConfirmAction({ type: "delete", row })
-                        }
-                      >
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                    <CrudActionButtons
+                      disabled={saving}
+                      onEdit={() => handleEdit(row)}
+                      onChangeStatus={() =>
+                        setConfirmAction({ type: "status", row })
+                      }
+                      onDelete={() =>
+                        setConfirmAction({ type: "delete", row })
+                      }
+                    />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <ActaModificacionDetalleForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
@@ -242,13 +386,13 @@ export default function ActasModificacionDetallesPage() {
         loading={saving}
         title={
           confirmAction?.type === "delete"
-            ? "Eliminar detalle"
+            ? "Eliminar detalle de acta"
             : "Cambiar estado"
         }
         message={
           confirmAction?.type === "delete"
-            ? "¿Confirmas que deseas eliminar este detalle de la vista?"
-            : "¿Confirmas que deseas cambiar el estado de este detalle?"
+            ? "¿Confirmas que deseas eliminar este detalle de acta?"
+            : "¿Confirmas que deseas cambiar el estado de este detalle de acta?"
         }
         confirmText={
           confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"

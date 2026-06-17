@@ -5,8 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -14,14 +12,16 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import Link from "next/link";
+import EngineeringIcon from "@mui/icons-material/Engineering";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useRouter } from "next/navigation";
+
 import { PageHeader } from "../../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../../components/common/LoadingBox";
-import { EmptyState } from "../../../../components/common/EmptyState";
 import { StatusChip } from "../../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../../components/common/CrudActionButtons";
 import { ReporteOperacionForm } from "../../../../components/control-obras/ReporteOperacionForm";
 import { controlObrasService } from "../../../../services/controlObras.service";
 import { ReporteOperacionDto } from "../../../../types/controlObras.types";
@@ -31,16 +31,25 @@ type ConfirmAction =
   | { type: "status"; row: ReporteOperacionDto }
   | null;
 
+function buildRowKey(row: ReporteOperacionDto, index: number) {
+  return (
+    row.orsPrimarykeyRope ??
+    row.orsIdentifkeyRope ??
+    `${row.orsIdentifkeyOrde ?? "ORDE"}-${index}`
+  );
+}
+
 export default function ReportesOperacionPage() {
+  const router = useRouter();
+
   const [rows, setRows] = useState<ReporteOperacionDto[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [openForm, setOpenForm] = useState(false);
-  const [selectedRow, setSelectedRow] = useState<ReporteOperacionDto | null>(
-    null
-  );
+  const [selectedRow, setSelectedRow] =
+    useState<ReporteOperacionDto | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   const [error, setError] = useState<string | null>(null);
@@ -48,10 +57,11 @@ export default function ReportesOperacionPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.orsIdentifkeyRope,
         row.orsIdentifkeyOrde,
@@ -77,7 +87,7 @@ export default function ReportesOperacionPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
@@ -102,6 +112,21 @@ export default function ReportesOperacionPage() {
     setOpenForm(true);
   };
 
+  const handleGoToDetail = (row: ReporteOperacionDto) => {
+    if (!row.orsIdentifkeyRope) return;
+
+    router.push(
+      `/dashboard/control-obras/reportes-operacion/${row.orsIdentifkeyRope}`
+    );
+  };
+
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
+
   const handleSubmit = async (data: ReporteOperacionDto) => {
     try {
       setSaving(true);
@@ -113,6 +138,7 @@ export default function ReportesOperacionPage() {
           selectedRow.orsPrimarykeyRope,
           data
         );
+
         setSuccess("Reporte de operación actualizado correctamente.");
       } else {
         await controlObrasService.reportesOperacion.create(data);
@@ -121,6 +147,7 @@ export default function ReportesOperacionPage() {
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
       setError(
@@ -143,7 +170,7 @@ export default function ReportesOperacionPage() {
       const primaryKey = confirmAction.row.orsPrimarykeyRope;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria.");
+        setError("El reporte seleccionado no tiene llave primaria.");
         return;
       }
 
@@ -160,6 +187,7 @@ export default function ReportesOperacionPage() {
           primaryKey,
           nextStatus
         );
+
         setSuccess("Estado del reporte actualizado correctamente.");
       }
 
@@ -176,12 +204,16 @@ export default function ReportesOperacionPage() {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
         title="Reportes de operación"
-        subtitle="Registro operativo de actividades, órdenes, fechas y observaciones."
+        subtitle="Administra los reportes base de operación de equipos y maquinaria por orden de servicio."
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          <Button
+            variant="contained"
+            startIcon={<EngineeringIcon />}
+            onClick={handleCreate}
+          >
             Crear reporte
           </Button>
         }
@@ -215,89 +247,93 @@ export default function ReportesOperacionPage() {
         }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin reportes de operación"
-              description="No hay reportes de operación registrados."
-              actionLabel="Crear reporte"
-              onAction={handleCreate}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código reporte</TableCell>
-                  <TableCell>Orden</TableCell>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Observación</TableCell>
-                  <TableCell>Tipo registro</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin reportes de operación"
+        emptyDescription="No hay reportes de operación registrados para mostrar."
+        emptyActionLabel="Crear reporte"
+        onEmptyAction={handleCreate}
+        minWidth={1100}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código reporte</TableCell>
+              <TableCell>Orden</TableCell>
+              <TableCell>Fecha reporte</TableCell>
+              <TableCell>Observación</TableCell>
+              <TableCell>Tipo registro</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow
-                    key={row.orsPrimarykeyRope ?? row.orsIdentifkeyRope}
+          <TableBody>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
+                <TableCell>{row.orsIdentifkeyRope}</TableCell>
+                <TableCell>{row.orsIdentifkeyOrde}</TableCell>
+                <TableCell>{row.orsFechareportRope}</TableCell>
+                <TableCell>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      maxWidth: 360,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      verticalAlign: "middle"
+                    }}
                   >
-                    <TableCell>{row.orsIdentifkeyRope}</TableCell>
-                    <TableCell>{row.orsIdentifkeyOrde}</TableCell>
-                    <TableCell>{row.orsFechareportRope}</TableCell>
-                    <TableCell>{row.orsObservacionRope}</TableCell>
-                    <TableCell>{row.orsTiporegistRope}</TableCell>
-                    <TableCell>
-                      <StatusChip value={row.orsEstadoregRope} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button
-                        size="small"
-                        component={Link}
-                        href={`/dashboard/control-obras/reportes-operacion/${row.orsIdentifkeyRope}`}
-                      >
-                        Ver
-                      </Button>
+                    {row.orsObservacionRope}
+                  </Box>
+                </TableCell>
+                <TableCell>{row.orsTiporegistRope}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.orsEstadoregRope} />
+                </TableCell>
+                <TableCell align="right">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      gap: 0.5
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon />}
+                      disabled={!row.orsIdentifkeyRope}
+                      onClick={() => handleGoToDetail(row)}
+                    >
+                      Detalle
+                    </Button>
 
-                      <Button size="small" onClick={() => handleEdit(row)}>
-                        Editar
-                      </Button>
-
-                      <Button
-                        size="small"
-                        onClick={() =>
-                          setConfirmAction({ type: "status", row })
-                        }
-                      >
-                        Estado
-                      </Button>
-
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() =>
-                          setConfirmAction({ type: "delete", row })
-                        }
-                      >
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                    <CrudActionButtons
+                      disabled={saving}
+                      onEdit={() => handleEdit(row)}
+                      onChangeStatus={() =>
+                        setConfirmAction({ type: "status", row })
+                      }
+                      onDelete={() =>
+                        setConfirmAction({ type: "delete", row })
+                      }
+                    />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <ReporteOperacionForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 

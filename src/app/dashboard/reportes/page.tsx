@@ -5,8 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -14,13 +12,16 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useRouter } from "next/navigation";
+
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../components/common/LoadingBox";
-import { EmptyState } from "../../../components/common/EmptyState";
 import { StatusChip } from "../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../components/common/CrudActionButtons";
 import { ReporteDiarioForm } from "../../../components/control-obras/ReporteDiarioForm";
 import { controlObrasService } from "../../../services/controlObras.service";
 import { ReporteDiarioDto } from "../../../types/controlObras.types";
@@ -30,7 +31,21 @@ type ConfirmAction =
   | { type: "status"; row: ReporteDiarioDto }
   | null;
 
-export default function ReporteDiarioPage() {
+function buildRowKey(row: ReporteDiarioDto, index: number) {
+  return (
+    row.orsPrimarykeyPdia ??
+    row.orsIdentifkeyPdia ??
+    `${row.orsIdentifkeyOrde ?? "PDIA"}-${index}`
+  );
+}
+
+function formatNumber(value?: number) {
+  return new Intl.NumberFormat("es-CO").format(value ?? 0);
+}
+
+export default function ReportesDiariosPage() {
+  const router = useRouter();
+
   const [rows, setRows] = useState<ReporteDiarioDto[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,16 +60,19 @@ export default function ReporteDiarioPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.orsIdentifkeyPdia,
         row.orsIdentifkeyOrde,
         row.orsIdentifkeyPlse,
         row.orsIdentifkeyPsem,
+        row.orsFechareportPdia,
         row.orsObservacionPdia,
+        row.orsTiporegistPdia,
         row.orsEstadoregPdia
       ]
         .filter(Boolean)
@@ -74,9 +92,12 @@ export default function ReporteDiarioPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible cargar los reportes diarios.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible cargar los reportes diarios."
+      );
     } finally {
       setLoading(false);
     }
@@ -85,6 +106,29 @@ export default function ReporteDiarioPage() {
   useEffect(() => {
     void loadRows();
   }, []);
+
+  const handleCreate = () => {
+    setSelectedRow(null);
+    setOpenForm(true);
+  };
+
+  const handleEdit = (row: ReporteDiarioDto) => {
+    setSelectedRow(row);
+    setOpenForm(true);
+  };
+
+  const handleGoToDetail = (row: ReporteDiarioDto) => {
+    if (!row.orsIdentifkeyPdia) return;
+
+    router.push(`/dashboard/reportes/${row.orsIdentifkeyPdia}`);
+  };
+
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
 
   const handleSubmit = async (data: ReporteDiarioDto) => {
     try {
@@ -97,6 +141,7 @@ export default function ReporteDiarioPage() {
           selectedRow.orsPrimarykeyPdia,
           data
         );
+
         setSuccess("Reporte diario actualizado correctamente.");
       } else {
         await controlObrasService.reportesDiarios.create(data);
@@ -105,9 +150,13 @@ export default function ReporteDiarioPage() {
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible guardar el reporte diario.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible guardar el reporte diario."
+      );
     } finally {
       setSaving(false);
     }
@@ -124,7 +173,7 @@ export default function ReporteDiarioPage() {
       const primaryKey = confirmAction.row.orsPrimarykeyPdia;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria.");
+        setError("El reporte seleccionado no tiene llave primaria.");
         return;
       }
 
@@ -134,123 +183,185 @@ export default function ReporteDiarioPage() {
       }
 
       if (confirmAction.type === "status") {
-        const nextStatus = confirmAction.row.orsEstadoregPdia === "1" ? "2" : "1";
-        await controlObrasService.reportesDiarios.changeStatus(primaryKey, nextStatus);
-        setSuccess("Estado actualizado correctamente.");
+        const nextStatus =
+          confirmAction.row.orsEstadoregPdia === "1" ? "2" : "1";
+
+        await controlObrasService.reportesDiarios.changeStatus(
+          primaryKey,
+          nextStatus
+        );
+
+        setSuccess("Estado del reporte actualizado correctamente.");
       }
 
       setConfirmAction(null);
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible ejecutar la acción.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible ejecutar la acción."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
-        title="Reporte diario"
-        subtitle="Registro diario de ejecución, cantidades realizadas, observaciones y soportes."
+        title="Reportes diarios"
+        subtitle="Registra y consulta los avances diarios de obra asociados a planes semanales, órdenes de servicio y proyecciones."
         action={
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setSelectedRow(null);
-              setOpenForm(true);
-            }}
+            startIcon={<AssignmentIcon />}
+            onClick={handleCreate}
           >
             Crear reporte
           </Button>
         }
       />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
 
       <PageToolbar
         left={
           <TextField
             size="small"
-            label="Buscar"
+            label="Buscar reporte"
             value={filter}
             onChange={event => setFilter(event.target.value)}
           />
         }
-        right={<Button variant="outlined" onClick={loadRows}>Actualizar</Button>}
+        right={
+          <Button variant="outlined" onClick={loadRows}>
+            Actualizar
+          </Button>
+        }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin reportes diarios"
-              description="No hay reportes diarios registrados."
-              actionLabel="Crear reporte"
-              onAction={() => setOpenForm(true)}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código reporte</TableCell>
-                  <TableCell>Orden</TableCell>
-                  <TableCell>Plan semanal</TableCell>
-                  <TableCell>Proyección</TableCell>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Cantidad ejecutada</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin reportes diarios"
+        emptyDescription="No hay reportes diarios registrados para mostrar."
+        emptyActionLabel="Crear reporte"
+        onEmptyAction={handleCreate}
+        minWidth={1250}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código reporte</TableCell>
+              <TableCell>Orden</TableCell>
+              <TableCell>Plan semanal</TableCell>
+              <TableCell>Proyección semanal</TableCell>
+              <TableCell>Fecha reporte</TableCell>
+              <TableCell>Cantidad ejecutada</TableCell>
+              <TableCell>Observación</TableCell>
+              <TableCell>Tipo registro</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow key={row.orsPrimarykeyPdia ?? row.orsIdentifkeyPdia}>
-                    <TableCell>{row.orsIdentifkeyPdia}</TableCell>
-                    <TableCell>{row.orsIdentifkeyOrde}</TableCell>
-                    <TableCell>{row.orsIdentifkeyPlse}</TableCell>
-                    <TableCell>{row.orsIdentifkeyPsem}</TableCell>
-                    <TableCell>{row.orsFechareportPdia}</TableCell>
-                    <TableCell>{row.orsEjecutunidadPdia}</TableCell>
-                    <TableCell><StatusChip value={row.orsEstadoregPdia} /></TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => { setSelectedRow(row); setOpenForm(true); }}>
-                        Editar
-                      </Button>
-                      <Button size="small" onClick={() => setConfirmAction({ type: "status", row })}>
-                        Estado
-                      </Button>
-                      <Button size="small" color="error" onClick={() => setConfirmAction({ type: "delete", row })}>
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          <TableBody>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
+                <TableCell>{row.orsIdentifkeyPdia}</TableCell>
+                <TableCell>{row.orsIdentifkeyOrde}</TableCell>
+                <TableCell>{row.orsIdentifkeyPlse}</TableCell>
+                <TableCell>{row.orsIdentifkeyPsem}</TableCell>
+                <TableCell>{row.orsFechareportPdia}</TableCell>
+                <TableCell>{formatNumber(row.orsEjecutunidadPdia)}</TableCell>
+                <TableCell>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      maxWidth: 320,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      verticalAlign: "middle"
+                    }}
+                  >
+                    {row.orsObservacionPdia}
+                  </Box>
+                </TableCell>
+                <TableCell>{row.orsTiporegistPdia}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.orsEstadoregPdia} />
+                </TableCell>
+                <TableCell align="right">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      gap: 0.5
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon />}
+                      disabled={!row.orsIdentifkeyPdia}
+                      onClick={() => handleGoToDetail(row)}
+                    >
+                      Detalle
+                    </Button>
+
+                    <CrudActionButtons
+                      disabled={saving}
+                      onEdit={() => handleEdit(row)}
+                      onChangeStatus={() =>
+                        setConfirmAction({ type: "status", row })
+                      }
+                      onDelete={() =>
+                        setConfirmAction({ type: "delete", row })
+                      }
+                    />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <ReporteDiarioForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
       <ConfirmDialog
         open={!!confirmAction}
         loading={saving}
-        title={confirmAction?.type === "delete" ? "Eliminar reporte" : "Cambiar estado"}
-        message={confirmAction?.type === "delete" ? "¿Confirmas que deseas eliminar este reporte diario?" : "¿Confirmas que deseas cambiar el estado?"}
-        confirmText={confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"}
+        title={
+          confirmAction?.type === "delete"
+            ? "Eliminar reporte diario"
+            : "Cambiar estado"
+        }
+        message={
+          confirmAction?.type === "delete"
+            ? "¿Confirmas que deseas eliminar este reporte diario?"
+            : "¿Confirmas que deseas cambiar el estado de este reporte diario?"
+        }
+        confirmText={
+          confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
+        }
         onClose={() => setConfirmAction(null)}
         onConfirm={executeConfirmAction}
       />

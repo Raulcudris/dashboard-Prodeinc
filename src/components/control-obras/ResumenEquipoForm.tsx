@@ -1,151 +1,223 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
+  Grid,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+
 import { ResumenEquipoDto } from "../../types/controlObras.types";
+import { EstadoRegistro } from "../../types/common.types";
 
-const schema = z.object({
-  orsIdentifkeyRseq: z.string().min(1, "La key del resumen es obligatoria"),
-  orsIdentifkeyOrde: z.string().min(1, "La orden es obligatoria"),
-  prvTipoequipoTieq: z.string().min(1, "El tipo de equipo es obligatorio"),
-  orsCantidunidadRseq: z.coerce.number().min(0, "La cantidad no puede ser negativa"),
-  orsValorunidadRseq: z.coerce.number().min(0, "El valor unitario no puede ser negativo"),
-  orsValortotalRseq: z.coerce.number().min(0, "El valor total no puede ser negativo"),
-  orsTiporegistRseq: z.string().optional(),
-  orsEstadoregRseq: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
+interface FormValues {
+  orsIdentifkeyRseq: string;
+  orsIdentifkeyOrde: string;
+  prvIdentifkeyInve: string;
+  orsCantidadRseq: number | "";
+  orsValorunidadRseq: number | "";
+  orsValortotalRseq: number | "";
+  orsEstadoregRseq: string;
+}
 
 interface ResumenEquipoFormProps {
+  open: boolean;
   loading?: boolean;
-  ordenKeyDefault?: string;
-  onCancel: () => void;
-  onSubmit: (data: ResumenEquipoDto) => void;
+  initialData?: ResumenEquipoDto | null;
+  onClose: () => void;
+  onSubmit: (data: ResumenEquipoDto) => Promise<void> | void;
+}
+
+const emptyValues: FormValues = {
+  orsIdentifkeyRseq: "",
+  orsIdentifkeyOrde: "",
+  prvIdentifkeyInve: "",
+  orsCantidadRseq: "",
+  orsValorunidadRseq: "",
+  orsValortotalRseq: "",
+  orsEstadoregRseq: "1"
+};
+
+function mapInitialData(data: ResumenEquipoDto): FormValues {
+  return {
+    orsIdentifkeyRseq: data.orsIdentifkeyRseq ?? "",
+    orsIdentifkeyOrde: data.orsIdentifkeyOrde ?? "",
+    prvIdentifkeyInve: data.prvIdentifkeyInve ?? "",
+    orsCantidadRseq:
+      typeof data.orsCantidadRseq === "number" ? data.orsCantidadRseq : "",
+    orsValorunidadRseq:
+      typeof data.orsValorunidadRseq === "number"
+        ? data.orsValorunidadRseq
+        : "",
+    orsValortotalRseq:
+      typeof data.orsValortotalRseq === "number"
+        ? data.orsValortotalRseq
+        : "",
+    orsEstadoregRseq: data.orsEstadoregRseq ?? "1"
+  };
+}
+
+function toOptionalNumber(value: number | "" | undefined) {
+  if (value === "" || value === undefined || Number.isNaN(value)) {
+    return undefined;
+  }
+
+  return Number(value);
 }
 
 export function ResumenEquipoForm({
+  open,
   loading = false,
-  ordenKeyDefault = "",
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: ResumenEquipoFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      orsIdentifkeyRseq: "",
-      orsIdentifkeyOrde: ordenKeyDefault,
-      prvTipoequipoTieq: "",
-      orsCantidunidadRseq: 0,
-      orsValorunidadRseq: 0,
-      orsValortotalRseq: 0,
-      orsTiporegistRseq: "1",
-      orsEstadoregRseq: "1"
-    }
+    defaultValues: emptyValues
   });
 
-  const submitForm = (values: FormValues) => {
-    const data: ResumenEquipoDto = {
-      orsIdentifkeyRseq: values.orsIdentifkeyRseq,
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde,
-      prvTipoequipoTieq: values.prvTipoequipoTieq,
-      orsCantidunidadRseq: Number(values.orsCantidunidadRseq || 0),
-      orsValorunidadRseq: Number(values.orsValorunidadRseq || 0),
-      orsValortotalRseq: Number(values.orsValortotalRseq || 0),
-      orsTiporegistRseq: values.orsTiporegistRseq || "1",
-      orsEstadoregRseq: values.orsEstadoregRseq || "1"
-    };
+  useEffect(() => {
+    if (!open) return;
 
-    onSubmit(data);
+    if (initialData) {
+      reset(mapInitialData(initialData));
+      return;
+    }
+
+    reset(emptyValues);
+  }, [open, initialData, reset]);
+
+  const submitForm = (values: FormValues) => {
+    onSubmit({
+      orsPrimarykeyRseq: initialData?.orsPrimarykeyRseq,
+      orsIdentifkeyRseq: values.orsIdentifkeyRseq.trim().toUpperCase(),
+      orsIdentifkeyOrde: values.orsIdentifkeyOrde.trim(),
+      prvIdentifkeyInve: values.prvIdentifkeyInve.trim(),
+      orsCantidadRseq: toOptionalNumber(values.orsCantidadRseq),
+      orsValorunidadRseq: toOptionalNumber(values.orsValorunidadRseq),
+      orsValortotalRseq: toOptionalNumber(values.orsValortotalRseq),
+      orsEstadoregRseq: (values.orsEstadoregRseq || "1") as EstadoRegistro
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
-      <DialogContent dividers>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1fr 1fr"
-            },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Key resumen"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyRseq)}
-            helperText={errors.orsIdentifkeyRseq?.message}
-            {...register("orsIdentifkeyRseq")}
-          />
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle>
+        {initialData ? "Editar resumen de equipo" : "Crear resumen de equipo"}
+      </DialogTitle>
 
-          <TextField
-            label="Key orden"
-            fullWidth
-            error={Boolean(errors.orsIdentifkeyOrde)}
-            helperText={errors.orsIdentifkeyOrde?.message}
-            {...register("orsIdentifkeyOrde")}
-          />
+      <Box component="form" onSubmit={handleSubmit(submitForm)}>
+        <DialogContent dividers>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="Código resumen"
+                placeholder="RSEQ-0001"
+                error={Boolean(errors.orsIdentifkeyRseq)}
+                helperText={errors.orsIdentifkeyRseq?.message}
+                {...register("orsIdentifkeyRseq", {
+                  required: "El código del resumen es obligatorio"
+                })}
+              />
+            </Grid>
 
-          <TextField
-            label="Tipo equipo"
-            fullWidth
-            error={Boolean(errors.prvTipoequipoTieq)}
-            helperText={errors.prvTipoequipoTieq?.message}
-            {...register("prvTipoequipoTieq")}
-          />
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="Orden de servicio"
+                placeholder="ORDE-0001"
+                error={Boolean(errors.orsIdentifkeyOrde)}
+                helperText={errors.orsIdentifkeyOrde?.message}
+                {...register("orsIdentifkeyOrde", {
+                  required: "La orden de servicio es obligatoria"
+                })}
+              />
+            </Grid>
 
-          <TextField
-            label="Cantidad unidad"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsCantidunidadRseq)}
-            helperText={errors.orsCantidunidadRseq?.message}
-            {...register("orsCantidunidadRseq")}
-          />
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="Equipo / inventario"
+                placeholder="INVE-0001"
+                error={Boolean(errors.prvIdentifkeyInve)}
+                helperText={errors.prvIdentifkeyInve?.message}
+                {...register("prvIdentifkeyInve", {
+                  required: "El equipo o inventario es obligatorio"
+                })}
+              />
+            </Grid>
 
-          <TextField
-            label="Valor unidad"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValorunidadRseq)}
-            helperText={errors.orsValorunidadRseq?.message}
-            {...register("orsValorunidadRseq")}
-          />
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Cantidad"
+                {...register("orsCantidadRseq", {
+                  valueAsNumber: true
+                })}
+              />
+            </Grid>
 
-          <TextField
-            label="Valor total"
-            type="number"
-            fullWidth
-            error={Boolean(errors.orsValortotalRseq)}
-            helperText={errors.orsValortotalRseq?.message}
-            {...register("orsValortotalRseq")}
-          />
-        </Box>
-      </DialogContent>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Valor unidad"
+                {...register("orsValorunidadRseq", {
+                  valueAsNumber: true
+                })}
+              />
+            </Grid>
 
-      <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
-          Cancelar
-        </Button>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Valor total"
+                {...register("orsValortotalRseq", {
+                  valueAsNumber: true
+                })}
+              />
+            </Grid>
 
-        <Button type="submit" variant="contained" disabled={loading}>
-          {loading ? "Guardando..." : "Guardar"}
-        </Button>
-      </DialogActions>
-    </form>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Estado"
+                placeholder="1"
+                {...register("orsEstadoregRseq")}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancelar
+          </Button>
+
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? "Guardando..." : "Guardar"}
+          </Button>
+        </DialogActions>
+      </Box>
+    </Dialog>
   );
 }

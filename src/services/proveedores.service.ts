@@ -1,75 +1,42 @@
-import { http } from "./apiClient";
-import {
-  ApiResponse,
-  PageParams,
-  ChangeStatusRequest,
-  DeleteRequest,
-  buildApiWrapper,
-  buildPageParams
-} from "../types/common.types";
+import { ApiResponse, PageParams } from "../types/common.types";
 import { ProveedorDto } from "../types/proveedores.types";
+import { http } from "./apiClient";
+import { createCrudService } from "./crud.service";
 
 const BASE_URL = "/api/proveedores/proveedores";
 
+const crud = createCrudService<ProveedorDto>(BASE_URL, "proveedorKey");
+
 export const proveedoresService = {
-  health: () => http.get<string>(`${BASE_URL}/health`),
+  ...crud,
 
-  getPages: (params?: PageParams) =>
-    http.get<ApiResponse<ProveedorDto>>(`${BASE_URL}/pages`, {
-      params: buildPageParams(params)
-    }),
+  async getByNit(numeroNit: string): Promise<ApiResponse<ProveedorDto>> {
+    const response = await http.get<ApiResponse<ProveedorDto>>(
+      `${BASE_URL}/by-nit`,
+      {
+        params: {
+          numeroNit
+        }
+      }
+    );
 
-  getAll: () =>
-    http.get<ApiResponse<ProveedorDto>>(`${BASE_URL}/all`),
+    return response.data;
+  },
 
-  get: (id: number) =>
-    http.get<ProveedorDto>(`${BASE_URL}/get/${id}`),
+  async getByEstado(estado: string): Promise<ApiResponse<ProveedorDto>> {
+    const response = await http.get<ApiResponse<ProveedorDto>>(
+      `${BASE_URL}/by-estado`,
+      {
+        params: {
+          estado
+        }
+      }
+    );
 
-  getByKey: (proveedorKey: string) =>
-    http.get<ApiResponse<ProveedorDto>>(`${BASE_URL}/by-key`, {
-      params: { proveedorKey }
-    }),
+    return response.data;
+  },
 
-  getByNit: (numeroNit: string) =>
-    http.get<ApiResponse<ProveedorDto>>(`${BASE_URL}/by-nit`, {
-      params: { numeroNit }
-    }),
-
-  getByEstado: (estado: string) =>
-    http.get<ApiResponse<ProveedorDto>>(`${BASE_URL}/by-estado`, {
-      params: { estado }
-    }),
-
-  create: (data: ProveedorDto) =>
-    http.post<ApiResponse<ProveedorDto>>(
-      `${BASE_URL}/create`,
-      buildApiWrapper(data)
-    ),
-
-  update: (id: number, data: ProveedorDto) =>
-    http.put<ApiResponse<ProveedorDto>>(
-      `${BASE_URL}/update/${id}`,
-      buildApiWrapper(data)
-    ),
-
-  changeStatus: (recPKey: number, recEstreg: string) =>
-    http.post<ApiResponse<ProveedorDto>>(
-      `${BASE_URL}/changestatus`,
-      [
-        {
-          recPKey,
-          recEstreg
-        } satisfies ChangeStatusRequest
-      ]
-    ),
-
-  delete: (recPKey: number) =>
-    http.post<ApiResponse<ProveedorDto>>(
-      `${BASE_URL}/delete`,
-      [
-        {
-          recPKey
-        } satisfies DeleteRequest
-      ]
-    )
+  async search(params?: PageParams): Promise<ApiResponse<ProveedorDto>> {
+    return crud.getPages(params);
+  }
 };

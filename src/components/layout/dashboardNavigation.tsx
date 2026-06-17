@@ -1,35 +1,39 @@
-import type { ReactNode } from "react";
+import { ReactNode } from "react";
 
+import DashboardIcon from "@mui/icons-material/Dashboard";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import PlaceIcon from "@mui/icons-material/Place";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import DescriptionIcon from "@mui/icons-material/Description";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
+import ReportIcon from "@mui/icons-material/Report";
+import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
+import EngineeringIcon from "@mui/icons-material/Engineering";
+import SummarizeIcon from "@mui/icons-material/Summarize";
 import BusinessIcon from "@mui/icons-material/Business";
 import StraightenIcon from "@mui/icons-material/Straighten";
 import CategoryIcon from "@mui/icons-material/Category";
 import InventoryIcon from "@mui/icons-material/Inventory";
-import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
-import ChecklistIcon from "@mui/icons-material/Checklist";
+import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
+import LinkIcon from "@mui/icons-material/Link";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+import DescriptionIcon from "@mui/icons-material/Description";
+import PlaylistAddCheckIcon from "@mui/icons-material/PlaylistAddCheck";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import ArticleIcon from "@mui/icons-material/Article";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 
-export interface DashboardNavItem {
+export interface DashboardNavigationItem {
   label: string;
   href: string;
   icon: ReactNode;
 }
 
-export interface DashboardNavSection {
+export interface DashboardNavigationSection {
   title: string;
-  items: DashboardNavItem[];
+  items: DashboardNavigationItem[];
 }
 
-export const dashboardSections: DashboardNavSection[] = [
+export const dashboardSections: DashboardNavigationSection[] = [
   {
-    title: "GENERAL",
+    title: "General",
     items: [
       {
         label: "Dashboard",
@@ -39,7 +43,7 @@ export const dashboardSections: DashboardNavSection[] = [
     ]
   },
   {
-    title: "CONTROL DE OBRA",
+    title: "Control de obra",
     items: [
       {
         label: "Órdenes de servicio",
@@ -47,39 +51,59 @@ export const dashboardSections: DashboardNavSection[] = [
         icon: <AssignmentIcon />
       },
       {
-        label: "Sitios / puntos de trabajo",
+        label: "Sitios / puntos",
         href: "/dashboard/sitios",
         icon: <PlaceIcon />
       },
       {
-        label: "Plan de trabajo proyectado",
-        href: "/dashboard/planes",
+        label: "Proyección",
+        href: "/dashboard/proyeccion",
         icon: <CalendarMonthIcon />
       },
       {
-        label: "Plan semanal",
+        label: "Planes de trabajo",
+        href: "/dashboard/planes",
+        icon: <FactCheckIcon />
+      },
+      {
+        label: "Planes semanales",
         href: "/dashboard/planes-semanales",
         icon: <CalendarMonthIcon />
       },
       {
-        label: "Reporte diario",
+        label: "Reportes diarios",
         href: "/dashboard/reportes",
-        icon: <DescriptionIcon />
+        icon: <AssignmentIcon />
       },
       {
         label: "Novedades",
         href: "/dashboard/novedades",
-        icon: <WarningAmberIcon />
-      },
-      {
-        label: "Evidencias / Fotos",
-        href: "/dashboard/evidencias/evidencias",
-        icon: <PhotoCameraIcon />
+        icon: <ReportIcon />
       }
     ]
   },
   {
-    title: "APOYO OPERATIVO",
+    title: "Operación de equipos",
+    items: [
+      {
+        label: "Resumen de equipos",
+        href: "/dashboard/control-obras/resumen-equipos",
+        icon: <SummarizeIcon />
+      },
+      {
+        label: "Reportes de operación",
+        href: "/dashboard/control-obras/reportes-operacion",
+        icon: <PrecisionManufacturingIcon />
+      },
+      {
+        label: "Detalle operación equipos",
+        href: "/dashboard/control-obras/detalles-equipos-operacion",
+        icon: <EngineeringIcon />
+      }
+    ]
+  },
+  {
+    title: "Apoyo operativo",
     items: [
       {
         label: "Proveedores",
@@ -100,36 +124,51 @@ export const dashboardSections: DashboardNavSection[] = [
         label: "Inventario de equipos",
         href: "/dashboard/equipos-maquinaria/equipos",
         icon: <InventoryIcon />
-      },
-      {
-        label: "Reportes de operación",
-        href: "/dashboard/control-obras/reportes-operacion",
-        icon: <PrecisionManufacturingIcon />
-      },
-      {
-        label: "Detalle equipo operación",
-        href: "/dashboard/control-obras/detalles-equipos-operacion",
-        icon: <ChecklistIcon />
       }
     ]
   },
   {
-    title: "SEGUIMIENTO",
+    title: "Evidencias",
     items: [
       {
-        label: "Avance de obra",
-        href: "/dashboard/control-obras/avances",
-        icon: <TrendingUpIcon />
+        label: "Evidencias / fotos",
+        href: "/dashboard/evidencias/evidencias",
+        icon: <PhotoLibraryIcon />
+      },
+      {
+        label: "Referencias evidencias",
+        href: "/dashboard/evidencias/referencias",
+        icon: <LinkIcon />
+      },
+      {
+        label: "Tipos de evidencia",
+        href: "/dashboard/evidencias/tipos",
+        icon: <CategoryIcon />
+      }
+    ]
+  },
+  {
+    title: "Seguimiento",
+    items: [
+      {
+        label: "Informes semanales",
+        href: "/dashboard/control-obras/informes-semanales",
+        icon: <AssessmentIcon />
       },
       {
         label: "Actas de modificación",
         href: "/dashboard/control-obras/actas-modificacion",
-        icon: <ArticleIcon />
+        icon: <DescriptionIcon />
       },
       {
-        label: "Detalle actas",
+        label: "Detalles actas",
         href: "/dashboard/control-obras/actas-modificacion-detalles",
-        icon: <ArticleIcon />
+        icon: <PlaylistAddCheckIcon />
+      },
+      {
+        label: "Avance de obra",
+        href: "/dashboard/control-obras/avances",
+        icon: <TrendingUpIcon />
       }
     ]
   }

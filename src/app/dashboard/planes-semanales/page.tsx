@@ -5,8 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -14,13 +12,16 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useRouter } from "next/navigation";
+
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../components/common/LoadingBox";
-import { EmptyState } from "../../../components/common/EmptyState";
 import { StatusChip } from "../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../components/common/CrudActionButtons";
 import { PlanSemanalForm } from "../../../components/control-obras/PlanSemanalForm";
 import { controlObrasService } from "../../../services/controlObras.service";
 import { PlanSemanalDto } from "../../../types/controlObras.types";
@@ -30,7 +31,25 @@ type ConfirmAction =
   | { type: "status"; row: PlanSemanalDto }
   | null;
 
+function buildRowKey(row: PlanSemanalDto, index: number) {
+  return (
+    row.orsPrimarykeyPlse ??
+    row.orsIdentifkeyPlse ??
+    `${row.orsIdentifkeyOrde ?? "ORDE"}-${row.orsIdentifkeyPltr ?? "PLTR"}-${index}`
+  );
+}
+
+function formatCurrency(value?: number) {
+  return `$${new Intl.NumberFormat("es-CO").format(value ?? 0)}`;
+}
+
+function formatNumber(value?: number) {
+  return new Intl.NumberFormat("es-CO").format(value ?? 0);
+}
+
 export default function PlanesSemanalesPage() {
+  const router = useRouter();
+
   const [rows, setRows] = useState<PlanSemanalDto[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,15 +64,22 @@ export default function PlanesSemanalesPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.orsIdentifkeyPlse,
         row.orsIdentifkeyOrde,
         row.orsIdentifkeyPltr,
         row.orsIdentifkeyPsem,
+        row.orsCantidunidadPlse,
+        row.orsValorunidadPlse,
+        row.orsValortotalPlse,
+        row.orsEjecutunidadPlse,
+        row.orsValorejecutPlse,
+        row.orsTiporegistPlse,
         row.orsEstadoregPlse
       ]
         .filter(Boolean)
@@ -73,9 +99,12 @@ export default function PlanesSemanalesPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible cargar los planes semanales.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible cargar los planes semanales."
+      );
     } finally {
       setLoading(false);
     }
@@ -84,6 +113,29 @@ export default function PlanesSemanalesPage() {
   useEffect(() => {
     void loadRows();
   }, []);
+
+  const handleCreate = () => {
+    setSelectedRow(null);
+    setOpenForm(true);
+  };
+
+  const handleEdit = (row: PlanSemanalDto) => {
+    setSelectedRow(row);
+    setOpenForm(true);
+  };
+
+  const handleGoToDetail = (row: PlanSemanalDto) => {
+    if (!row.orsIdentifkeyPlse) return;
+
+    router.push(`/dashboard/planes-semanales/${row.orsIdentifkeyPlse}`);
+  };
+
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
 
   const handleSubmit = async (data: PlanSemanalDto) => {
     try {
@@ -96,6 +148,7 @@ export default function PlanesSemanalesPage() {
           selectedRow.orsPrimarykeyPlse,
           data
         );
+
         setSuccess("Plan semanal actualizado correctamente.");
       } else {
         await controlObrasService.planesSemanales.create(data);
@@ -104,9 +157,13 @@ export default function PlanesSemanalesPage() {
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible guardar el plan semanal.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible guardar el plan semanal."
+      );
     } finally {
       setSaving(false);
     }
@@ -123,7 +180,7 @@ export default function PlanesSemanalesPage() {
       const primaryKey = confirmAction.row.orsPrimarykeyPlse;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria.");
+        setError("El plan semanal seleccionado no tiene llave primaria.");
         return;
       }
 
@@ -133,127 +190,174 @@ export default function PlanesSemanalesPage() {
       }
 
       if (confirmAction.type === "status") {
-        const nextStatus = confirmAction.row.orsEstadoregPlse === "1" ? "2" : "1";
-        await controlObrasService.planesSemanales.changeStatus(primaryKey, nextStatus);
-        setSuccess("Estado actualizado correctamente.");
+        const nextStatus =
+          confirmAction.row.orsEstadoregPlse === "1" ? "2" : "1";
+
+        await controlObrasService.planesSemanales.changeStatus(
+          primaryKey,
+          nextStatus
+        );
+
+        setSuccess("Estado del plan semanal actualizado correctamente.");
       }
 
       setConfirmAction(null);
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible ejecutar la acción.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible ejecutar la acción."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
-        title="Plan semanal"
-        subtitle="Programación semanal de cantidades, valores y actividades a ejecutar."
+        title="Planes semanales"
+        subtitle="Administra la programación semanal de ejecución por orden, plan de trabajo y proyección semanal."
         action={
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setSelectedRow(null);
-              setOpenForm(true);
-            }}
+            startIcon={<CalendarMonthIcon />}
+            onClick={handleCreate}
           >
             Crear plan semanal
           </Button>
         }
       />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
 
       <PageToolbar
         left={
           <TextField
             size="small"
-            label="Buscar"
+            label="Buscar plan semanal"
             value={filter}
             onChange={event => setFilter(event.target.value)}
           />
         }
-        right={<Button variant="outlined" onClick={loadRows}>Actualizar</Button>}
+        right={
+          <Button variant="outlined" onClick={loadRows}>
+            Actualizar
+          </Button>
+        }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin planes semanales"
-              description="No hay planes semanales registrados."
-              actionLabel="Crear plan semanal"
-              onAction={() => setOpenForm(true)}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código</TableCell>
-                  <TableCell>Orden</TableCell>
-                  <TableCell>Plan</TableCell>
-                  <TableCell>Proyección</TableCell>
-                  <TableCell>Cant. programada</TableCell>
-                  <TableCell>Cant. ejecutada</TableCell>
-                  <TableCell>Valor total</TableCell>
-                  <TableCell>Valor ejecutado</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin planes semanales"
+        emptyDescription="No hay planes semanales registrados para mostrar."
+        emptyActionLabel="Crear plan semanal"
+        onEmptyAction={handleCreate}
+        minWidth={1380}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código plan semanal</TableCell>
+              <TableCell>Orden</TableCell>
+              <TableCell>Plan trabajo</TableCell>
+              <TableCell>Proyección semanal</TableCell>
+              <TableCell>Cantidad programada</TableCell>
+              <TableCell>Valor unidad</TableCell>
+              <TableCell>Valor total</TableCell>
+              <TableCell>Cantidad ejecutada</TableCell>
+              <TableCell>Valor ejecutado</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow key={row.orsPrimarykeyPlse ?? row.orsIdentifkeyPlse}>
-                    <TableCell>{row.orsIdentifkeyPlse}</TableCell>
-                    <TableCell>{row.orsIdentifkeyOrde}</TableCell>
-                    <TableCell>{row.orsIdentifkeyPltr}</TableCell>
-                    <TableCell>{row.orsIdentifkeyPsem}</TableCell>
-                    <TableCell>{row.orsCantidunidadPlse}</TableCell>
-                    <TableCell>{row.orsEjecutunidadPlse}</TableCell>
-                    <TableCell>{row.orsValortotalPlse}</TableCell>
-                    <TableCell>{row.orsValorejecutPlse}</TableCell>
-                    <TableCell><StatusChip value={row.orsEstadoregPlse} /></TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => { setSelectedRow(row); setOpenForm(true); }}>
-                        Editar
-                      </Button>
-                      <Button size="small" onClick={() => setConfirmAction({ type: "status", row })}>
-                        Estado
-                      </Button>
-                      <Button size="small" color="error" onClick={() => setConfirmAction({ type: "delete", row })}>
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          <TableBody>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
+                <TableCell>{row.orsIdentifkeyPlse}</TableCell>
+                <TableCell>{row.orsIdentifkeyOrde}</TableCell>
+                <TableCell>{row.orsIdentifkeyPltr}</TableCell>
+                <TableCell>{row.orsIdentifkeyPsem}</TableCell>
+                <TableCell>{formatNumber(row.orsCantidunidadPlse)}</TableCell>
+                <TableCell>{formatCurrency(row.orsValorunidadPlse)}</TableCell>
+                <TableCell>{formatCurrency(row.orsValortotalPlse)}</TableCell>
+                <TableCell>{formatNumber(row.orsEjecutunidadPlse)}</TableCell>
+                <TableCell>{formatCurrency(row.orsValorejecutPlse)}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.orsEstadoregPlse} />
+                </TableCell>
+                <TableCell align="right">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      gap: 0.5
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon />}
+                      disabled={!row.orsIdentifkeyPlse}
+                      onClick={() => handleGoToDetail(row)}
+                    >
+                      Detalle
+                    </Button>
+
+                    <CrudActionButtons
+                      disabled={saving}
+                      onEdit={() => handleEdit(row)}
+                      onChangeStatus={() =>
+                        setConfirmAction({ type: "status", row })
+                      }
+                      onDelete={() =>
+                        setConfirmAction({ type: "delete", row })
+                      }
+                    />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <PlanSemanalForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
       <ConfirmDialog
         open={!!confirmAction}
         loading={saving}
-        title={confirmAction?.type === "delete" ? "Eliminar plan semanal" : "Cambiar estado"}
-        message={confirmAction?.type === "delete" ? "¿Confirmas que deseas eliminar este plan semanal?" : "¿Confirmas que deseas cambiar el estado?"}
-        confirmText={confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"}
+        title={
+          confirmAction?.type === "delete"
+            ? "Eliminar plan semanal"
+            : "Cambiar estado"
+        }
+        message={
+          confirmAction?.type === "delete"
+            ? "¿Confirmas que deseas eliminar este plan semanal?"
+            : "¿Confirmas que deseas cambiar el estado de este plan semanal?"
+        }
+        confirmText={
+          confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
+        }
         onClose={() => setConfirmAction(null)}
         onConfirm={executeConfirmAction}
       />

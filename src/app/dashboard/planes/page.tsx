@@ -5,8 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -14,13 +12,16 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useRouter } from "next/navigation";
+
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../components/common/LoadingBox";
-import { EmptyState } from "../../../components/common/EmptyState";
 import { StatusChip } from "../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../components/common/CrudActionButtons";
 import { PlanTrabajoForm } from "../../../components/control-obras/PlanTrabajoForm";
 import { controlObrasService } from "../../../services/controlObras.service";
 import { PlanTrabajoDto } from "../../../types/controlObras.types";
@@ -30,7 +31,25 @@ type ConfirmAction =
   | { type: "status"; row: PlanTrabajoDto }
   | null;
 
-export default function PlanTrabajoProyectadoPage() {
+function buildRowKey(row: PlanTrabajoDto, index: number) {
+  return (
+    row.orsPrimarykeyPltr ??
+    row.orsIdentifkeyPltr ??
+    `${row.orsIdentifkeyOrde ?? "ORDE"}-${row.orsIdentifkeyPunt ?? "PUNT"}-${index}`
+  );
+}
+
+function formatCurrency(value?: number) {
+  return `$${new Intl.NumberFormat("es-CO").format(value ?? 0)}`;
+}
+
+function formatNumber(value?: number) {
+  return new Intl.NumberFormat("es-CO").format(value ?? 0);
+}
+
+export default function PlanesTrabajoPage() {
+  const router = useRouter();
+
   const [rows, setRows] = useState<PlanTrabajoDto[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,16 +64,22 @@ export default function PlanTrabajoProyectadoPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.orsIdentifkeyPltr,
         row.orsIdentifkeyOrde,
         row.orsIdentifkeyPunt,
         row.orsDesactividadPltr,
+        row.orsIdentifkeyRseq,
         row.prvIdentifkeyInve,
+        row.orsCantidunidadRseq,
+        row.orsValorunidadRseq,
+        row.orsValortotalRseq,
+        row.orsTiporegistPltr,
         row.orsEstadoregPltr
       ]
         .filter(Boolean)
@@ -74,9 +99,12 @@ export default function PlanTrabajoProyectadoPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible cargar los planes.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible cargar los planes de trabajo."
+      );
     } finally {
       setLoading(false);
     }
@@ -86,6 +114,29 @@ export default function PlanTrabajoProyectadoPage() {
     void loadRows();
   }, []);
 
+  const handleCreate = () => {
+    setSelectedRow(null);
+    setOpenForm(true);
+  };
+
+  const handleEdit = (row: PlanTrabajoDto) => {
+    setSelectedRow(row);
+    setOpenForm(true);
+  };
+
+  const handleGoToDetail = (row: PlanTrabajoDto) => {
+    if (!row.orsIdentifkeyPltr) return;
+
+    router.push(`/dashboard/planes/${row.orsIdentifkeyPltr}`);
+  };
+
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
+
   const handleSubmit = async (data: PlanTrabajoDto) => {
     try {
       setSaving(true);
@@ -93,18 +144,26 @@ export default function PlanTrabajoProyectadoPage() {
       setSuccess(null);
 
       if (selectedRow?.orsPrimarykeyPltr) {
-        await controlObrasService.planes.update(selectedRow.orsPrimarykeyPltr, data);
-        setSuccess("Plan actualizado correctamente.");
+        await controlObrasService.planes.update(
+          selectedRow.orsPrimarykeyPltr,
+          data
+        );
+
+        setSuccess("Plan de trabajo actualizado correctamente.");
       } else {
         await controlObrasService.planes.create(data);
-        setSuccess("Plan creado correctamente.");
+        setSuccess("Plan de trabajo creado correctamente.");
       }
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible guardar el plan.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible guardar el plan de trabajo."
+      );
     } finally {
       setSaving(false);
     }
@@ -121,135 +180,194 @@ export default function PlanTrabajoProyectadoPage() {
       const primaryKey = confirmAction.row.orsPrimarykeyPltr;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria.");
+        setError("El plan seleccionado no tiene llave primaria.");
         return;
       }
 
       if (confirmAction.type === "delete") {
         await controlObrasService.planes.delete(primaryKey);
-        setSuccess("Plan eliminado correctamente.");
+        setSuccess("Plan de trabajo eliminado correctamente.");
       }
 
       if (confirmAction.type === "status") {
-        const nextStatus = confirmAction.row.orsEstadoregPltr === "1" ? "2" : "1";
+        const nextStatus =
+          confirmAction.row.orsEstadoregPltr === "1" ? "2" : "1";
+
         await controlObrasService.planes.changeStatus(primaryKey, nextStatus);
-        setSuccess("Estado actualizado correctamente.");
+
+        setSuccess("Estado del plan actualizado correctamente.");
       }
 
       setConfirmAction(null);
       await loadRows();
     } catch (err) {
-      setError((err as { message?: string }).message ?? "No fue posible ejecutar la acción.");
+      setError(
+        (err as { message?: string }).message ??
+          "No fue posible ejecutar la acción."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
-        title="Plan de trabajo proyectado"
-        subtitle="Planeación de actividades, cantidades, equipos, unidades y valores por orden y punto de trabajo."
+        title="Planes de trabajo"
+        subtitle="Administra actividades proyectadas por orden de servicio y sitio de trabajo, incluyendo cantidades, equipos y valores."
         action={
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setSelectedRow(null);
-              setOpenForm(true);
-            }}
+            startIcon={<FactCheckIcon />}
+            onClick={handleCreate}
           >
             Crear plan
           </Button>
         }
       />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
 
       <PageToolbar
         left={
           <TextField
             size="small"
-            label="Buscar"
+            label="Buscar plan"
             value={filter}
             onChange={event => setFilter(event.target.value)}
           />
         }
-        right={<Button variant="outlined" onClick={loadRows}>Actualizar</Button>}
+        right={
+          <Button variant="outlined" onClick={loadRows}>
+            Actualizar
+          </Button>
+        }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin planes"
-              description="No hay planes de trabajo proyectados."
-              actionLabel="Crear plan"
-              onAction={() => setOpenForm(true)}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código plan</TableCell>
-                  <TableCell>Orden</TableCell>
-                  <TableCell>Punto</TableCell>
-                  <TableCell>Actividad</TableCell>
-                  <TableCell>Equipo</TableCell>
-                  <TableCell>Cantidad</TableCell>
-                  <TableCell>Valor total</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin planes de trabajo"
+        emptyDescription="No hay planes de trabajo registrados para mostrar."
+        emptyActionLabel="Crear plan"
+        onEmptyAction={handleCreate}
+        minWidth={1350}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Código plan</TableCell>
+              <TableCell>Orden</TableCell>
+              <TableCell>Sitio / punto</TableCell>
+              <TableCell>Actividad</TableCell>
+              <TableCell>Resumen equipo</TableCell>
+              <TableCell>Equipo</TableCell>
+              <TableCell>Cantidad</TableCell>
+              <TableCell>Valor unidad</TableCell>
+              <TableCell>Valor total</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow key={row.orsPrimarykeyPltr ?? row.orsIdentifkeyPltr}>
-                    <TableCell>{row.orsIdentifkeyPltr}</TableCell>
-                    <TableCell>{row.orsIdentifkeyOrde}</TableCell>
-                    <TableCell>{row.orsIdentifkeyPunt}</TableCell>
-                    <TableCell>{row.orsDesactividadPltr}</TableCell>
-                    <TableCell>{row.prvIdentifkeyInve}</TableCell>
-                    <TableCell>{row.orsCantidunidadRseq}</TableCell>
-                    <TableCell>{row.orsValortotalRseq}</TableCell>
-                    <TableCell><StatusChip value={row.orsEstadoregPltr} /></TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => { setSelectedRow(row); setOpenForm(true); }}>
-                        Editar
-                      </Button>
-                      <Button size="small" onClick={() => setConfirmAction({ type: "status", row })}>
-                        Estado
-                      </Button>
-                      <Button size="small" color="error" onClick={() => setConfirmAction({ type: "delete", row })}>
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          <TableBody>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
+                <TableCell>{row.orsIdentifkeyPltr}</TableCell>
+                <TableCell>{row.orsIdentifkeyOrde}</TableCell>
+                <TableCell>{row.orsIdentifkeyPunt}</TableCell>
+                <TableCell>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      maxWidth: 360,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      verticalAlign: "middle"
+                    }}
+                  >
+                    {row.orsDesactividadPltr}
+                  </Box>
+                </TableCell>
+                <TableCell>{row.orsIdentifkeyRseq}</TableCell>
+                <TableCell>{row.prvIdentifkeyInve}</TableCell>
+                <TableCell>{formatNumber(row.orsCantidunidadRseq)}</TableCell>
+                <TableCell>{formatCurrency(row.orsValorunidadRseq)}</TableCell>
+                <TableCell>{formatCurrency(row.orsValortotalRseq)}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.orsEstadoregPltr} />
+                </TableCell>
+                <TableCell align="right">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      gap: 0.5
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon />}
+                      disabled={!row.orsIdentifkeyPltr}
+                      onClick={() => handleGoToDetail(row)}
+                    >
+                      Detalle
+                    </Button>
+
+                    <CrudActionButtons
+                      disabled={saving}
+                      onEdit={() => handleEdit(row)}
+                      onChangeStatus={() =>
+                        setConfirmAction({ type: "status", row })
+                      }
+                      onDelete={() =>
+                        setConfirmAction({ type: "delete", row })
+                      }
+                    />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <PlanTrabajoForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
       <ConfirmDialog
         open={!!confirmAction}
         loading={saving}
-        title={confirmAction?.type === "delete" ? "Eliminar plan" : "Cambiar estado"}
-        message={confirmAction?.type === "delete" ? "¿Confirmas que deseas eliminar este plan?" : "¿Confirmas que deseas cambiar el estado?"}
-        confirmText={confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"}
+        title={
+          confirmAction?.type === "delete"
+            ? "Eliminar plan de trabajo"
+            : "Cambiar estado"
+        }
+        message={
+          confirmAction?.type === "delete"
+            ? "¿Confirmas que deseas eliminar este plan de trabajo?"
+            : "¿Confirmas que deseas cambiar el estado de este plan?"
+        }
+        confirmText={
+          confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
+        }
         onClose={() => setConfirmAction(null)}
         onConfirm={executeConfirmAction}
       />

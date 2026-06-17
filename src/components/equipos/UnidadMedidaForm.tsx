@@ -2,16 +2,23 @@
 
 import { useEffect } from "react";
 import {
+  Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Grid,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { UnidadMedidaDto } from "../../types/equipos.types";
+import { EstadoRegistro } from "../../types/common.types";
+
+interface FormValues {
+  prvTipunidamedUnme: string;
+  prvDescmedidaUnme: string;
+  prvEstadoregUnme: string;
+}
 
 interface UnidadMedidaFormProps {
   open: boolean;
@@ -21,11 +28,19 @@ interface UnidadMedidaFormProps {
   onSubmit: (data: UnidadMedidaDto) => Promise<void> | void;
 }
 
-const defaultValues: UnidadMedidaDto = {
+const emptyValues: FormValues = {
   prvTipunidamedUnme: "",
   prvDescmedidaUnme: "",
   prvEstadoregUnme: "1"
 };
+
+function mapInitialData(data: UnidadMedidaDto): FormValues {
+  return {
+    prvTipunidamedUnme: data.prvTipunidamedUnme ?? "",
+    prvDescmedidaUnme: data.prvDescmedidaUnme ?? "",
+    prvEstadoregUnme: data.prvEstadoregUnme ?? "1"
+  };
+}
 
 export function UnidadMedidaForm({
   open,
@@ -39,70 +54,84 @@ export function UnidadMedidaForm({
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<UnidadMedidaDto>({
-    defaultValues
+  } = useForm<FormValues>({
+    defaultValues: emptyValues
   });
 
   useEffect(() => {
-    reset(initialData ?? defaultValues);
-  }, [initialData, reset, open]);
+    if (!open) return;
+
+    if (initialData) {
+      reset(mapInitialData(initialData));
+      return;
+    }
+
+    reset(emptyValues);
+  }, [open, initialData, reset]);
+
+  const submitForm = (values: FormValues) => {
+    onSubmit({
+      prvTipunidamedUnme: values.prvTipunidamedUnme.trim().toUpperCase(),
+      prvDescmedidaUnme: values.prvDescmedidaUnme.trim(),
+      prvEstadoregUnme: (values.prvEstadoregUnme || "1") as EstadoRegistro
+    });
+  };
 
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="sm"
+      fullWidth
+    >
       <DialogTitle>
         {initialData ? "Editar unidad de medida" : "Crear unidad de medida"}
       </DialogTitle>
 
-      <DialogContent dividers>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 6 }}>
+      <Box component="form" onSubmit={handleSubmit(submitForm)}>
+        <DialogContent dividers>
+          <Box sx={{ display: "grid", gap: 2 }}>
             <TextField
               fullWidth
-              label="Código unidad"
+              label="Código / tipo unidad"
               placeholder="HORA, DIA, KM, M3"
-              {...register("prvTipunidamedUnme", {
-                required: "El código de unidad es obligatorio"
-              })}
-              error={!!errors.prvTipunidamedUnme}
+              error={Boolean(errors.prvTipunidamedUnme)}
               helperText={errors.prvTipunidamedUnme?.message}
+              {...register("prvTipunidamedUnme", {
+                required: "El código de la unidad es obligatorio"
+              })}
             />
-          </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Estado"
-              {...register("prvEstadoregUnme")}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12 }}>
             <TextField
               fullWidth
               label="Descripción"
+              placeholder="Hora de operación, día trabajado, kilómetro..."
+              error={Boolean(errors.prvDescmedidaUnme)}
+              helperText={errors.prvDescmedidaUnme?.message}
               {...register("prvDescmedidaUnme", {
                 required: "La descripción es obligatoria"
               })}
-              error={!!errors.prvDescmedidaUnme}
-              helperText={errors.prvDescmedidaUnme?.message}
             />
-          </Grid>
-        </Grid>
-      </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          Cancelar
-        </Button>
+            <TextField
+              fullWidth
+              label="Estado"
+              placeholder="1"
+              {...register("prvEstadoregUnme")}
+            />
+          </Box>
+        </DialogContent>
 
-        <Button
-          variant="contained"
-          disabled={loading}
-          onClick={handleSubmit(onSubmit)}
-        >
-          {loading ? "Guardando..." : "Guardar"}
-        </Button>
-      </DialogActions>
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancelar
+          </Button>
+
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? "Guardando..." : "Guardar"}
+          </Button>
+        </DialogActions>
+      </Box>
     </Dialog>
   );
 }

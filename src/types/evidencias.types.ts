@@ -1,9 +1,11 @@
+import { EstadoRegistro } from "./common.types";
+
 export interface TipoEvidenciaDto {
   eviPrimarykeyTiev?: number;
   eviIdentifkeyTiev?: string;
   eviDescripcionTiev?: string;
   eviTiporegistTiev?: string;
-  eviEstadoregTiev?: string;
+  eviEstadoregTiev?: EstadoRegistro;
 }
 
 export interface EvidenciaDto {
@@ -17,18 +19,18 @@ export interface EvidenciaDto {
   eviLatitudEvid?: number;
   eviLongitudEvid?: number;
   eviTiporegistEvid?: string;
-  eviEstadoregEvid?: string;
+  eviEstadoregEvid?: EstadoRegistro;
 }
 
 export interface ReferenciaEvidenciaDto {
   eviPrimarykeyRefe?: number;
   eviIdentifkeyRefe?: string;
   eviIdentifkeyEvid?: string;
-  eviTiporegistroRefe?: string;
+  eviTiporegistroRefe?: TipoRegistroEvidencia | string;
   eviIdentifregistroRefe?: string;
   eviObservacionRefe?: string;
   eviTiporegistRefe?: string;
-  eviEstadoregRefe?: string;
+  eviEstadoregRefe?: EstadoRegistro;
 }
 
 export type TipoRegistroEvidencia =

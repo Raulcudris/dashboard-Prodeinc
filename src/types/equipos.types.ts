@@ -1,7 +1,9 @@
+import { EstadoRegistro } from "./common.types";
+
 export interface UnidadMedidaDto {
   prvTipunidamedUnme?: string;
   prvDescmedidaUnme?: string;
-  prvEstadoregUnme?: string;
+  prvEstadoregUnme?: EstadoRegistro;
 }
 
 export interface TipoEquipoDto {
@@ -10,7 +12,7 @@ export interface TipoEquipoDto {
   prvDescripcionTieq?: string;
   prvIdentifkeyUnme?: string;
   prvTiporegistTieq?: string;
-  prvEstadoregTieq?: string;
+  prvEstadoregTieq?: EstadoRegistro;
 }
 
 export interface EquipoDto {
@@ -21,7 +23,7 @@ export interface EquipoDto {
   prvNombrequipoInve?: string;
   prvRefermodeloInve?: string;
   prvEquipoestadoInve?: string;
-  prvEquipoactivoInve?: string;
-  prvEstadoregInve?: string;
+  prvEquipoactivoInve?: EstadoRegistro;
+  prvEstadoregInve?: EstadoRegistro;
   prvDescripcionInve?: string;
 }

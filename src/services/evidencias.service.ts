@@ -1,204 +1,146 @@
-import { http } from "./apiClient";
-import {
-  ApiResponse,
-  PageParams,
-  ChangeStatusRequest,
-  DeleteRequest,
-  buildApiWrapper,
-  buildPageParams
-} from "../types/common.types";
+import { ApiResponse } from "../types/common.types";
 import {
   EvidenciaDto,
   ReferenciaEvidenciaDto,
   TipoEvidenciaDto
 } from "../types/evidencias.types";
+import { http } from "./apiClient";
+import { createCrudService } from "./crud.service";
 
 const BASE_TIPOS = "/api/evidencias/tipos";
 const BASE_REFERENCIAS = "/api/evidencias/referencias";
 const BASE_EVIDENCIAS = "/api/evidencias/evidencias";
 
+const tiposCrud = createCrudService<TipoEvidenciaDto>(
+  BASE_TIPOS,
+  "tipoEvidenciaKey"
+);
+
+const referenciasCrud = createCrudService<ReferenciaEvidenciaDto>(
+  BASE_REFERENCIAS,
+  "referenciaKey"
+);
+
+const evidenciasCrud = createCrudService<EvidenciaDto>(
+  BASE_EVIDENCIAS,
+  "evidenciaKey"
+);
+
 export const evidenciasService = {
   tipos: {
-    health: () => http.get<string>(`${BASE_TIPOS}/health`),
+    ...tiposCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<TipoEvidenciaDto>>(`${BASE_TIPOS}/pages`, {
-        params: buildPageParams(params)
-      }),
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<TipoEvidenciaDto>> {
+      const response = await http.get<ApiResponse<TipoEvidenciaDto>>(
+        `${BASE_TIPOS}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    getByKey: (tipoEvidenciaKey: string) =>
-      http.get<TipoEvidenciaDto>(`${BASE_TIPOS}/by-key`, {
-        params: { tipoEvidenciaKey }
-      }),
-
-    getByEstado: (estado: string) =>
-      http.get<ApiResponse<TipoEvidenciaDto>>(`${BASE_TIPOS}/by-estado`, {
-        params: { estado }
-      }),
-
-    create: (data: TipoEvidenciaDto) =>
-      http.post<ApiResponse<TipoEvidenciaDto>>(
-        `${BASE_TIPOS}/create`,
-        buildApiWrapper(data)
-      ),
-
-    update: (id: number, data: TipoEvidenciaDto) =>
-      http.put<ApiResponse<TipoEvidenciaDto>>(
-        `${BASE_TIPOS}/update/${id}`,
-        buildApiWrapper(data)
-      ),
-
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      http.post<ApiResponse<TipoEvidenciaDto>>(
-        `${BASE_TIPOS}/changestatus`,
-        [
-          {
-            recPKey,
-            recEstreg
-          } satisfies ChangeStatusRequest
-        ]
-      ),
-
-    delete: (recPKey: number) =>
-      http.post<ApiResponse<TipoEvidenciaDto>>(
-        `${BASE_TIPOS}/delete`,
-        [
-          {
-            recPKey
-          } satisfies DeleteRequest
-        ]
-      )
+      return response.data;
+    }
   },
 
   referencias: {
-    health: () => http.get<string>(`${BASE_REFERENCIAS}/health`),
+    ...referenciasCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<ReferenciaEvidenciaDto>>(
-        `${BASE_REFERENCIAS}/pages`,
-        { params: buildPageParams(params) }
-      ),
-
-    getByKey: (referenciaKey: string) =>
-      http.get<ReferenciaEvidenciaDto>(`${BASE_REFERENCIAS}/by-key`, {
-        params: { referenciaKey }
-      }),
-
-    getByRegistro: (registroKey: string) =>
-      http.get<ApiResponse<ReferenciaEvidenciaDto>>(
+    async getByRegistro(
+      registroKey: string
+    ): Promise<ApiResponse<ReferenciaEvidenciaDto>> {
+      const response = await http.get<ApiResponse<ReferenciaEvidenciaDto>>(
         `${BASE_REFERENCIAS}/by-registro`,
-        { params: { registroKey } }
-      ),
+        {
+          params: {
+            registroKey
+          }
+        }
+      );
 
-    getByTipoRegistro: (tipoRegistro: string) =>
-      http.get<ApiResponse<ReferenciaEvidenciaDto>>(
+      return response.data;
+    },
+
+    async getByTipoRegistro(
+      tipoRegistro: string
+    ): Promise<ApiResponse<ReferenciaEvidenciaDto>> {
+      const response = await http.get<ApiResponse<ReferenciaEvidenciaDto>>(
         `${BASE_REFERENCIAS}/by-tipo-registro`,
-        { params: { tipoRegistro } }
-      ),
+        {
+          params: {
+            tipoRegistro
+          }
+        }
+      );
 
-    getByTipoRegistroAndRegistro: (
+      return response.data;
+    },
+
+    async getByTipoRegistroAndRegistro(
       tipoRegistro: string,
       registroKey: string
-    ) =>
-      http.get<ApiResponse<ReferenciaEvidenciaDto>>(
+    ): Promise<ApiResponse<ReferenciaEvidenciaDto>> {
+      const response = await http.get<ApiResponse<ReferenciaEvidenciaDto>>(
         `${BASE_REFERENCIAS}/by-tipo-registro-and-registro`,
-        { params: { tipoRegistro, registroKey } }
-      ),
+        {
+          params: {
+            tipoRegistro,
+            registroKey
+          }
+        }
+      );
 
-    getByEstado: (estado: string) =>
-      http.get<ApiResponse<ReferenciaEvidenciaDto>>(
+      return response.data;
+    },
+
+    async getByEstado(
+      estado: string
+    ): Promise<ApiResponse<ReferenciaEvidenciaDto>> {
+      const response = await http.get<ApiResponse<ReferenciaEvidenciaDto>>(
         `${BASE_REFERENCIAS}/by-estado`,
-        { params: { estado } }
-      ),
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    create: (data: ReferenciaEvidenciaDto) =>
-      http.post<ApiResponse<ReferenciaEvidenciaDto>>(
-        `${BASE_REFERENCIAS}/create`,
-        buildApiWrapper(data)
-      ),
-
-    update: (id: number, data: ReferenciaEvidenciaDto) =>
-      http.put<ApiResponse<ReferenciaEvidenciaDto>>(
-        `${BASE_REFERENCIAS}/update/${id}`,
-        buildApiWrapper(data)
-      ),
-
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      http.post<ApiResponse<ReferenciaEvidenciaDto>>(
-        `${BASE_REFERENCIAS}/changestatus`,
-        [
-          {
-            recPKey,
-            recEstreg
-          } satisfies ChangeStatusRequest
-        ]
-      ),
-
-    delete: (recPKey: number) =>
-      http.post<ApiResponse<ReferenciaEvidenciaDto>>(
-        `${BASE_REFERENCIAS}/delete`,
-        [
-          {
-            recPKey
-          } satisfies DeleteRequest
-        ]
-      )
+      return response.data;
+    }
   },
 
   evidencias: {
-    health: () => http.get<string>(`${BASE_EVIDENCIAS}/health`),
+    ...evidenciasCrud,
 
-    getPages: (params?: PageParams) =>
-      http.get<ApiResponse<EvidenciaDto>>(`${BASE_EVIDENCIAS}/pages`, {
-        params: buildPageParams(params)
-      }),
+    async getByTipo(
+      tipoEvidenciaKey: string
+    ): Promise<ApiResponse<EvidenciaDto>> {
+      const response = await http.get<ApiResponse<EvidenciaDto>>(
+        `${BASE_EVIDENCIAS}/by-tipo`,
+        {
+          params: {
+            tipoEvidenciaKey
+          }
+        }
+      );
 
-    getByKey: (evidenciaKey: string) =>
-      http.get<EvidenciaDto>(`${BASE_EVIDENCIAS}/by-key`, {
-        params: { evidenciaKey }
-      }),
+      return response.data;
+    },
 
-    getByTipo: (tipoEvidenciaKey: string) =>
-      http.get<ApiResponse<EvidenciaDto>>(`${BASE_EVIDENCIAS}/by-tipo`, {
-        params: { tipoEvidenciaKey }
-      }),
+    async getByEstado(estado: string): Promise<ApiResponse<EvidenciaDto>> {
+      const response = await http.get<ApiResponse<EvidenciaDto>>(
+        `${BASE_EVIDENCIAS}/by-estado`,
+        {
+          params: {
+            estado
+          }
+        }
+      );
 
-    getByEstado: (estado: string) =>
-      http.get<ApiResponse<EvidenciaDto>>(`${BASE_EVIDENCIAS}/by-estado`, {
-        params: { estado }
-      }),
-
-    create: (data: EvidenciaDto) =>
-      http.post<ApiResponse<EvidenciaDto>>(
-        `${BASE_EVIDENCIAS}/create`,
-        buildApiWrapper(data)
-      ),
-
-    update: (id: number, data: EvidenciaDto) =>
-      http.put<ApiResponse<EvidenciaDto>>(
-        `${BASE_EVIDENCIAS}/update/${id}`,
-        buildApiWrapper(data)
-      ),
-
-    changeStatus: (recPKey: number, recEstreg: string) =>
-      http.post<ApiResponse<EvidenciaDto>>(
-        `${BASE_EVIDENCIAS}/changestatus`,
-        [
-          {
-            recPKey,
-            recEstreg
-          } satisfies ChangeStatusRequest
-        ]
-      ),
-
-    delete: (recPKey: number) =>
-      http.post<ApiResponse<EvidenciaDto>>(
-        `${BASE_EVIDENCIAS}/delete`,
-        [
-          {
-            recPKey
-          } satisfies DeleteRequest
-        ]
-      )
+      return response.data;
+    }
   }
 };

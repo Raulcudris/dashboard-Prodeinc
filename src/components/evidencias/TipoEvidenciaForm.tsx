@@ -1,91 +1,147 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Box,
   Button,
+  Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
   TextField
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { TipoEvidenciaDto } from "../../types/evidencias.types";
+import { EstadoRegistro } from "../../types/common.types";
 
-const schema = z.object({
-  eviIdentifkeyTiev: z.string().min(1, "La key del tipo es obligatoria"),
-  eviDescripcionTiev: z.string().min(1, "La descripción es obligatoria"),
-  eviTiporegistTiev: z.string().optional(),
-  eviEstadoregTiev: z.string().optional()
-});
-
-type FormValues = z.infer<typeof schema>;
+interface FormValues {
+  eviIdentifkeyTiev: string;
+  eviDescripcionTiev: string;
+  eviTiporegistTiev: string;
+  eviEstadoregTiev: string;
+}
 
 interface TipoEvidenciaFormProps {
+  open: boolean;
   loading?: boolean;
-  onCancel: () => void;
-  onSubmit: (data: TipoEvidenciaDto) => void;
+  initialData?: TipoEvidenciaDto | null;
+  onClose: () => void;
+  onSubmit: (data: TipoEvidenciaDto) => Promise<void> | void;
+}
+
+const emptyValues: FormValues = {
+  eviIdentifkeyTiev: "",
+  eviDescripcionTiev: "",
+  eviTiporegistTiev: "1",
+  eviEstadoregTiev: "1"
+};
+
+function mapInitialData(data: TipoEvidenciaDto): FormValues {
+  return {
+    eviIdentifkeyTiev: data.eviIdentifkeyTiev ?? "",
+    eviDescripcionTiev: data.eviDescripcionTiev ?? "",
+    eviTiporegistTiev: data.eviTiporegistTiev ?? "1",
+    eviEstadoregTiev: data.eviEstadoregTiev ?? "1"
+  };
 }
 
 export function TipoEvidenciaForm({
+  open,
   loading = false,
-  onCancel,
+  initialData,
+  onClose,
   onSubmit
 }: TipoEvidenciaFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      eviIdentifkeyTiev: "",
-      eviDescripcionTiev: "",
-      eviTiporegistTiev: "1",
-      eviEstadoregTiev: "1"
-    }
+    defaultValues: emptyValues
   });
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (initialData) {
+      reset(mapInitialData(initialData));
+      return;
+    }
+
+    reset(emptyValues);
+  }, [open, initialData, reset]);
 
   const submitForm = (values: FormValues) => {
     onSubmit({
+      eviPrimarykeyTiev: initialData?.eviPrimarykeyTiev,
       eviIdentifkeyTiev: values.eviIdentifkeyTiev.trim().toUpperCase(),
-      eviDescripcionTiev: values.eviDescripcionTiev,
+      eviDescripcionTiev: values.eviDescripcionTiev.trim(),
       eviTiporegistTiev: values.eviTiporegistTiev || "1",
-      eviEstadoregTiev: values.eviEstadoregTiev || "1"
+      eviEstadoregTiev: (values.eviEstadoregTiev || "1") as EstadoRegistro
     });
   };
 
   return (
-    <form onSubmit={handleSubmit(submitForm)}>
-      <DialogContent dividers>
-        <Box sx={{ display: "grid", gap: 2 }}>
-          <TextField
-            label="Key tipo evidencia"
-            fullWidth
-            error={Boolean(errors.eviIdentifkeyTiev)}
-            helperText={errors.eviIdentifkeyTiev?.message}
-            {...register("eviIdentifkeyTiev")}
-          />
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle>
+        {initialData ? "Editar tipo de evidencia" : "Crear tipo de evidencia"}
+      </DialogTitle>
 
-          <TextField
-            label="Descripción"
-            fullWidth
-            error={Boolean(errors.eviDescripcionTiev)}
-            helperText={errors.eviDescripcionTiev?.message}
-            {...register("eviDescripcionTiev")}
-          />
-        </Box>
-      </DialogContent>
+      <Box component="form" onSubmit={handleSubmit(submitForm)}>
+        <DialogContent dividers>
+          <Box sx={{ display: "grid", gap: 2 }}>
+            <TextField
+              label="Key tipo evidencia"
+              fullWidth
+              error={Boolean(errors.eviIdentifkeyTiev)}
+              helperText={errors.eviIdentifkeyTiev?.message}
+              {...register("eviIdentifkeyTiev", {
+                required: "La key del tipo es obligatoria"
+              })}
+            />
 
-      <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>
-          Cancelar
-        </Button>
+            <TextField
+              label="Descripción"
+              fullWidth
+              error={Boolean(errors.eviDescripcionTiev)}
+              helperText={errors.eviDescripcionTiev?.message}
+              {...register("eviDescripcionTiev", {
+                required: "La descripción es obligatoria"
+              })}
+            />
 
-        <Button type="submit" variant="contained" disabled={loading}>
-          {loading ? "Guardando..." : "Guardar"}
-        </Button>
-      </DialogActions>
-    </form>
+            <TextField
+              label="Tipo registro interno"
+              fullWidth
+              placeholder="1"
+              {...register("eviTiporegistTiev")}
+            />
+
+            <TextField
+              label="Estado registro"
+              fullWidth
+              placeholder="1"
+              {...register("eviEstadoregTiev")}
+            />
+          </Box>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancelar
+          </Button>
+
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? "Guardando..." : "Guardar"}
+          </Button>
+        </DialogActions>
+      </Box>
+    </Dialog>
   );
 }

@@ -5,8 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -14,15 +12,16 @@ import {
   TableRow,
   TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import CategoryIcon from "@mui/icons-material/Category";
+
 import { PageHeader } from "../../../../components/layout/PageHeader";
 import { PageToolbar } from "../../../../components/common/PageToolbar";
-import { LoadingBox } from "../../../../components/common/LoadingBox";
-import { EmptyState } from "../../../../components/common/EmptyState";
 import { StatusChip } from "../../../../components/common/StatusChip";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
+import { CrudTableCard } from "../../../../components/common/CrudTableCard";
+import { CrudActionButtons } from "../../../../components/common/CrudActionButtons";
 import { TipoEquipoForm } from "../../../../components/equipos/TipoEquipoForm";
-import { equiposService } from "../../../../services/equipos.service";
+import { equiposMaquinariaService } from "../../../../services/equipos.service";
 import { TipoEquipoDto } from "../../../../types/equipos.types";
 
 type ConfirmAction =
@@ -51,8 +50,8 @@ export default function TiposEquipoPage() {
     return rows.filter(row =>
       [
         row.prvTipoequipoTieq,
-        row.prvIdentifkeyUnme,
         row.prvDescripcionTieq,
+        row.prvIdentifkeyUnme,
         row.prvTiporegistTieq,
         row.prvEstadoregTieq
       ]
@@ -66,7 +65,7 @@ export default function TiposEquipoPage() {
       setLoading(true);
       setError(null);
 
-      const response = await equiposService.tipos.getPages({
+      const response = await equiposMaquinariaService.tipos.getPages({
         currentPage: 1,
         pageSize: 50,
         parameter: "TEXT",
@@ -98,6 +97,13 @@ export default function TiposEquipoPage() {
     setOpenForm(true);
   };
 
+  const handleCloseForm = () => {
+    if (saving) return;
+
+    setOpenForm(false);
+    setSelectedRow(null);
+  };
+
   const handleSubmit = async (data: TipoEquipoDto) => {
     try {
       setSaving(true);
@@ -105,15 +111,20 @@ export default function TiposEquipoPage() {
       setSuccess(null);
 
       if (selectedRow?.prvPrimarykeyTieq) {
-        await equiposService.tipos.update(selectedRow.prvPrimarykeyTieq, data);
+        await equiposMaquinariaService.tipos.update(
+          selectedRow.prvPrimarykeyTieq,
+          data
+        );
+
         setSuccess("Tipo de equipo actualizado correctamente.");
       } else {
-        await equiposService.tipos.create(data);
+        await equiposMaquinariaService.tipos.create(data);
         setSuccess("Tipo de equipo creado correctamente.");
       }
 
       setOpenForm(false);
       setSelectedRow(null);
+
       await loadRows();
     } catch (err) {
       setError(
@@ -136,12 +147,12 @@ export default function TiposEquipoPage() {
       const primaryKey = confirmAction.row.prvPrimarykeyTieq;
 
       if (!primaryKey) {
-        setError("El registro no tiene llave primaria.");
+        setError("El tipo de equipo seleccionado no tiene llave primaria.");
         return;
       }
 
       if (confirmAction.type === "delete") {
-        await equiposService.tipos.delete(primaryKey);
+        await equiposMaquinariaService.tipos.delete(primaryKey);
         setSuccess("Tipo de equipo eliminado correctamente.");
       }
 
@@ -149,7 +160,11 @@ export default function TiposEquipoPage() {
         const nextStatus =
           confirmAction.row.prvEstadoregTieq === "1" ? "2" : "1";
 
-        await equiposService.tipos.changeStatus(primaryKey, nextStatus);
+        await equiposMaquinariaService.tipos.changeStatus(
+          primaryKey,
+          nextStatus
+        );
+
         setSuccess("Estado del tipo de equipo actualizado correctamente.");
       }
 
@@ -166,12 +181,16 @@ export default function TiposEquipoPage() {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
         title="Tipos de equipo"
-        subtitle="Clasificación de maquinaria, vehículos, herramientas y equipos."
+        subtitle="Administra el catálogo de tipos de maquinaria, vehículos, herramientas y equipos usados en la operación de obra."
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          <Button
+            variant="contained"
+            startIcon={<CategoryIcon />}
+            onClick={handleCreate}
+          >
             Crear tipo
           </Button>
         }
@@ -205,79 +224,58 @@ export default function TiposEquipoPage() {
         }
       />
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              title="Sin tipos de equipo"
-              description="No hay tipos de equipo registrados."
-              actionLabel="Crear tipo"
-              onAction={handleCreate}
-            />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código tipo</TableCell>
-                  <TableCell>Unidad</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell>Tipo registro</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
+      <CrudTableCard
+        loading={loading}
+        isEmpty={filteredRows.length === 0}
+        emptyTitle="Sin tipos de equipo"
+        emptyDescription="No hay tipos de equipo registrados para mostrar."
+        emptyActionLabel="Crear tipo"
+        onEmptyAction={handleCreate}
+        minWidth={950}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Tipo equipo</TableCell>
+              <TableCell>Descripción</TableCell>
+              <TableCell>Unidad</TableCell>
+              <TableCell>Tipo registro interno</TableCell>
+              <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {filteredRows.map(row => (
-                  <TableRow
-                    key={row.prvPrimarykeyTieq ?? row.prvTipoequipoTieq}
-                  >
-                    <TableCell>{row.prvTipoequipoTieq}</TableCell>
-                    <TableCell>{row.prvIdentifkeyUnme}</TableCell>
-                    <TableCell>{row.prvDescripcionTieq}</TableCell>
-                    <TableCell>{row.prvTiporegistTieq}</TableCell>
-                    <TableCell>
-                      <StatusChip value={row.prvEstadoregTieq} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => handleEdit(row)}>
-                        Editar
-                      </Button>
-
-                      <Button
-                        size="small"
-                        onClick={() =>
-                          setConfirmAction({ type: "status", row })
-                        }
-                      >
-                        Estado
-                      </Button>
-
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() =>
-                          setConfirmAction({ type: "delete", row })
-                        }
-                      >
-                        Eliminar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          <TableBody>
+            {filteredRows.map(row => (
+              <TableRow key={row.prvPrimarykeyTieq ?? row.prvTipoequipoTieq}>
+                <TableCell>{row.prvTipoequipoTieq}</TableCell>
+                <TableCell>{row.prvDescripcionTieq}</TableCell>
+                <TableCell>{row.prvIdentifkeyUnme}</TableCell>
+                <TableCell>{row.prvTiporegistTieq}</TableCell>
+                <TableCell>
+                  <StatusChip value={row.prvEstadoregTieq} />
+                </TableCell>
+                <TableCell align="right">
+                  <CrudActionButtons
+                    disabled={saving}
+                    onEdit={() => handleEdit(row)}
+                    onChangeStatus={() =>
+                      setConfirmAction({ type: "status", row })
+                    }
+                    onDelete={() => setConfirmAction({ type: "delete", row })}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CrudTableCard>
 
       <TipoEquipoForm
         open={openForm}
         loading={saving}
         initialData={selectedRow}
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />
 
