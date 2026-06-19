@@ -29,6 +29,29 @@ type ConfirmAction =
   | { type: "status"; row: TipoEvidenciaDto }
   | null;
 
+function blurActiveElement() {
+  if (typeof document === "undefined") return;
+
+  const activeElement = document.activeElement;
+
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+}
+
+function openModalSafely(callback: () => void) {
+  blurActiveElement();
+  window.requestAnimationFrame(() => callback());
+}
+
+function buildRowKey(row: TipoEvidenciaDto, index: number) {
+  return (
+    row.eviPrimarykeyTiev ??
+    row.eviIdentifkeyTiev ??
+    `TIEV-${index}`
+  );
+}
+
 export default function TiposEvidenciaPage() {
   const [rows, setRows] = useState<TipoEvidenciaDto[]>([]);
   const [filter, setFilter] = useState("");
@@ -44,10 +67,11 @@ export default function TiposEvidenciaPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.eviIdentifkeyTiev,
         row.eviDescripcionTiev,
@@ -71,7 +95,7 @@ export default function TiposEvidenciaPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
@@ -87,20 +111,44 @@ export default function TiposEvidenciaPage() {
   }, []);
 
   const handleCreate = () => {
-    setSelectedRow(null);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(null);
+      setOpenForm(true);
+    });
   };
 
   const handleEdit = (row: TipoEvidenciaDto) => {
-    setSelectedRow(row);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(row);
+      setOpenForm(true);
+    });
+  };
+
+  const handleChangeStatus = (row: TipoEvidenciaDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "status", row });
+    });
+  };
+
+  const handleDelete = (row: TipoEvidenciaDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "delete", row });
+    });
   };
 
   const handleCloseForm = () => {
     if (saving) return;
 
+    blurActiveElement();
     setOpenForm(false);
     setSelectedRow(null);
+  };
+
+  const handleCloseConfirm = () => {
+    if (saving) return;
+
+    blurActiveElement();
+    setConfirmAction(null);
   };
 
   const handleSubmit = async (data: TipoEvidenciaDto) => {
@@ -185,6 +233,7 @@ export default function TiposEvidenciaPage() {
           <Button
             variant="contained"
             startIcon={<CategoryIcon />}
+            onMouseDown={event => event.preventDefault()}
             onClick={handleCreate}
           >
             Crear tipo
@@ -214,7 +263,11 @@ export default function TiposEvidenciaPage() {
           />
         }
         right={
-          <Button variant="outlined" onClick={loadRows}>
+          <Button
+            variant="outlined"
+            onMouseDown={event => event.preventDefault()}
+            onClick={loadRows}
+          >
             Actualizar
           </Button>
         }
@@ -241,8 +294,8 @@ export default function TiposEvidenciaPage() {
           </TableHead>
 
           <TableBody>
-            {filteredRows.map(row => (
-              <TableRow key={row.eviPrimarykeyTiev ?? row.eviIdentifkeyTiev}>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
                 <TableCell>{row.eviIdentifkeyTiev}</TableCell>
                 <TableCell>{row.eviDescripcionTiev}</TableCell>
                 <TableCell>{row.eviTiporegistTiev}</TableCell>
@@ -253,10 +306,8 @@ export default function TiposEvidenciaPage() {
                   <CrudActionButtons
                     disabled={saving}
                     onEdit={() => handleEdit(row)}
-                    onChangeStatus={() =>
-                      setConfirmAction({ type: "status", row })
-                    }
-                    onDelete={() => setConfirmAction({ type: "delete", row })}
+                    onChangeStatus={() => handleChangeStatus(row)}
+                    onDelete={() => handleDelete(row)}
                   />
                 </TableCell>
               </TableRow>
@@ -289,7 +340,7 @@ export default function TiposEvidenciaPage() {
         confirmText={
           confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
         }
-        onClose={() => setConfirmAction(null)}
+        onClose={handleCloseConfirm}
         onConfirm={executeConfirmAction}
       />
     </Box>

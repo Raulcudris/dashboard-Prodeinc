@@ -43,6 +43,24 @@ function formatCurrency(value?: number) {
   return `$${new Intl.NumberFormat("es-CO").format(value ?? 0)}`;
 }
 
+function blurActiveElement() {
+  if (typeof document === "undefined") return;
+
+  const activeElement = document.activeElement;
+
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+}
+
+function openModalSafely(callback: () => void) {
+  blurActiveElement();
+
+  window.requestAnimationFrame(() => {
+    callback();
+  });
+}
+
 export default function OrdenesServicioPage() {
   const router = useRouter();
 
@@ -109,16 +127,22 @@ export default function OrdenesServicioPage() {
   }, []);
 
   const handleCreate = () => {
-    setSelectedRow(null);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(null);
+      setOpenForm(true);
+    });
   };
 
   const handleEdit = (row: OrdenServicioDto) => {
-    setSelectedRow(row);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(row);
+      setOpenForm(true);
+    });
   };
 
   const handleGoToDetail = (row: OrdenServicioDto) => {
+    blurActiveElement();
+
     if (!row.orsIdentifkeyOrde) return;
 
     router.push(`/dashboard/ordenes/${row.orsIdentifkeyOrde}`);
@@ -126,6 +150,8 @@ export default function OrdenesServicioPage() {
 
   const handleCloseForm = () => {
     if (saving) return;
+
+    blurActiveElement();
 
     setOpenForm(false);
     setSelectedRow(null);
@@ -148,6 +174,8 @@ export default function OrdenesServicioPage() {
         await controlObrasService.ordenes.create(data);
         setSuccess("Orden de servicio creada correctamente.");
       }
+
+      blurActiveElement();
 
       setOpenForm(false);
       setSelectedRow(null);
@@ -192,6 +220,8 @@ export default function OrdenesServicioPage() {
         setSuccess("Estado de la orden actualizado correctamente.");
       }
 
+      blurActiveElement();
+
       setConfirmAction(null);
       await loadRows();
     } catch (err) {
@@ -204,6 +234,14 @@ export default function OrdenesServicioPage() {
     }
   };
 
+  const handleCloseConfirm = () => {
+    if (saving) return;
+
+    blurActiveElement();
+
+    setConfirmAction(null);
+  };
+
   return (
     <Box sx={{ width: "100%" }}>
       <PageHeader
@@ -213,6 +251,7 @@ export default function OrdenesServicioPage() {
           <Button
             variant="contained"
             startIcon={<AssignmentIcon />}
+            onMouseDown={event => event.preventDefault()}
             onClick={handleCreate}
           >
             Crear orden
@@ -242,7 +281,11 @@ export default function OrdenesServicioPage() {
           />
         }
         right={
-          <Button variant="outlined" onClick={loadRows}>
+          <Button
+            variant="outlined"
+            onMouseDown={event => event.preventDefault()}
+            onClick={loadRows}
+          >
             Actualizar
           </Button>
         }
@@ -276,6 +319,7 @@ export default function OrdenesServicioPage() {
               <TableCell align="right">Acciones</TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
             {filteredRows.map((row, index) => (
               <TableRow key={buildRowKey(row, index)}>
@@ -320,6 +364,7 @@ export default function OrdenesServicioPage() {
                       size="small"
                       startIcon={<VisibilityIcon />}
                       disabled={!row.orsIdentifkeyOrde}
+                      onMouseDown={event => event.preventDefault()}
                       onClick={() => handleGoToDetail(row)}
                     >
                       Detalle
@@ -328,12 +373,16 @@ export default function OrdenesServicioPage() {
                     <CrudActionButtons
                       disabled={saving}
                       onEdit={() => handleEdit(row)}
-                      onChangeStatus={() =>
-                        setConfirmAction({ type: "status", row })
-                      }
-                      onDelete={() =>
-                        setConfirmAction({ type: "delete", row })
-                      }
+                      onChangeStatus={() => {
+                        openModalSafely(() => {
+                          setConfirmAction({ type: "status", row });
+                        });
+                      }}
+                      onDelete={() => {
+                        openModalSafely(() => {
+                          setConfirmAction({ type: "delete", row });
+                        });
+                      }}
                     />
                   </Box>
                 </TableCell>
@@ -367,7 +416,7 @@ export default function OrdenesServicioPage() {
         confirmText={
           confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
         }
-        onClose={() => setConfirmAction(null)}
+        onClose={handleCloseConfirm}
         onConfirm={executeConfirmAction}
       />
     </Box>

@@ -8,10 +8,12 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Grid,
+  MenuItem,
   TextField
 } from "@mui/material";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 
 import { PlanTrabajoDto } from "../../types/controlObras.types";
 import { EstadoRegistro } from "../../types/common.types";
@@ -52,6 +54,18 @@ const emptyValues: FormValues = {
   orsEstadoregPltr: "1"
 };
 
+function normalizeTipoRegistro(value?: string) {
+  const normalizedValue = String(value ?? "1");
+
+  return ["1", "2", "3"].includes(normalizedValue) ? normalizedValue : "1";
+}
+
+function normalizeEstadoRegistro(value?: string) {
+  const normalizedValue = String(value ?? "1");
+
+  return ["1", "2"].includes(normalizedValue) ? normalizedValue : "1";
+}
+
 function mapInitialData(data: PlanTrabajoDto): FormValues {
   return {
     orsIdentifkeyPltr: data.orsIdentifkeyPltr ?? "",
@@ -72,8 +86,8 @@ function mapInitialData(data: PlanTrabajoDto): FormValues {
       typeof data.orsValortotalRseq === "number"
         ? data.orsValortotalRseq
         : "",
-    orsTiporegistPltr: data.orsTiporegistPltr ?? "1",
-    orsEstadoregPltr: data.orsEstadoregPltr ?? "1"
+    orsTiporegistPltr: normalizeTipoRegistro(data.orsTiporegistPltr),
+    orsEstadoregPltr: normalizeEstadoRegistro(data.orsEstadoregPltr)
   };
 }
 
@@ -83,6 +97,20 @@ function toOptionalNumber(value: number | "" | undefined) {
   }
 
   return Number(value);
+}
+
+function safeNumber(value: number | "") {
+  if (value === "" || Number.isNaN(value)) return 0;
+
+  return Number(value);
+}
+
+function normalizeKey(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function normalizeText(value: string) {
+  return value.trim();
 }
 
 export function PlanTrabajoForm({
@@ -96,10 +124,16 @@ export function PlanTrabajoForm({
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
+    control,
     formState: { errors }
   } = useForm<FormValues>({
     defaultValues: emptyValues
   });
+
+  const cantidad = watch("orsCantidunidadRseq");
+  const valorUnidad = watch("orsValorunidadRseq");
 
   useEffect(() => {
     if (!open) return;
@@ -112,20 +146,41 @@ export function PlanTrabajoForm({
     reset(emptyValues);
   }, [open, initialData, reset]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const total = safeNumber(cantidad) * safeNumber(valorUnidad);
+
+    if (total > 0) {
+      setValue("orsValortotalRseq", total, {
+        shouldValidate: true,
+        shouldDirty: true
+      });
+      return;
+    }
+
+    setValue("orsValortotalRseq", "", {
+      shouldValidate: true,
+      shouldDirty: true
+    });
+  }, [open, cantidad, valorUnidad, setValue]);
+
   const submitForm = (values: FormValues) => {
     onSubmit({
       orsPrimarykeyPltr: initialData?.orsPrimarykeyPltr,
-      orsIdentifkeyPltr: values.orsIdentifkeyPltr.trim().toUpperCase(),
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde.trim(),
-      orsIdentifkeyPunt: values.orsIdentifkeyPunt.trim(),
-      orsDesactividadPltr: values.orsDesactividadPltr.trim(),
-      orsIdentifkeyRseq: values.orsIdentifkeyRseq.trim(),
-      prvIdentifkeyInve: values.prvIdentifkeyInve.trim(),
+      orsIdentifkeyPltr: normalizeKey(values.orsIdentifkeyPltr),
+      orsIdentifkeyOrde: normalizeKey(values.orsIdentifkeyOrde),
+      orsIdentifkeyPunt: normalizeKey(values.orsIdentifkeyPunt),
+      orsDesactividadPltr: normalizeText(values.orsDesactividadPltr),
+      orsIdentifkeyRseq: normalizeKey(values.orsIdentifkeyRseq) || undefined,
+      prvIdentifkeyInve: normalizeKey(values.prvIdentifkeyInve) || undefined,
       orsCantidunidadRseq: toOptionalNumber(values.orsCantidunidadRseq),
       orsValorunidadRseq: toOptionalNumber(values.orsValorunidadRseq),
       orsValortotalRseq: toOptionalNumber(values.orsValortotalRseq),
-      orsTiporegistPltr: values.orsTiporegistPltr || "1",
-      orsEstadoregPltr: (values.orsEstadoregPltr || "1") as EstadoRegistro
+      orsTiporegistPltr: normalizeTipoRegistro(values.orsTiporegistPltr),
+      orsEstadoregPltr: normalizeEstadoRegistro(
+        values.orsEstadoregPltr
+      ) as EstadoRegistro
     });
   };
 
@@ -135,13 +190,48 @@ export function PlanTrabajoForm({
       onClose={loading ? undefined : onClose}
       maxWidth="lg"
       fullWidth
+      disableRestoreFocus
     >
       <DialogTitle>
-        {initialData ? "Editar plan de trabajo" : "Crear plan de trabajo"}
+        <Box
+          component="div"
+          sx={{
+            m: 0,
+            fontSize: "1.25rem",
+            fontWeight: 900
+          }}
+        >
+          {initialData ? "Editar plan de trabajo" : "Crear plan de trabajo"}
+        </Box>
+
+        <Box
+          component="p"
+          sx={{
+            m: 0,
+            mt: 0.5,
+            color: "text.secondary",
+            fontSize: "0.9rem"
+          }}
+        >
+          Registra la actividad proyectada por orden de servicio y sitio de
+          trabajo.
+        </Box>
       </DialogTitle>
 
       <Box component="form" onSubmit={handleSubmit(submitForm)}>
         <DialogContent dividers>
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Información principal
+          </Box>
+
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 4 }}>
               <TextField
@@ -149,9 +239,24 @@ export function PlanTrabajoForm({
                 label="Código plan"
                 placeholder="PLTR-0001"
                 error={Boolean(errors.orsIdentifkeyPltr)}
-                helperText={errors.orsIdentifkeyPltr?.message}
+                helperText={
+                  errors.orsIdentifkeyPltr?.message ??
+                  "Código único del plan de trabajo."
+                }
+                slotProps={{
+                  input: {
+                    readOnly: Boolean(initialData)
+                  }
+                }}
                 {...register("orsIdentifkeyPltr", {
-                  required: "El código del plan es obligatorio"
+                  required: "El código del plan es obligatorio",
+                  minLength: {
+                    value: 3,
+                    message: "El código debe tener mínimo 3 caracteres"
+                  },
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "El código del plan es obligatorio"
                 })}
               />
             </Grid>
@@ -162,9 +267,15 @@ export function PlanTrabajoForm({
                 label="Orden de servicio"
                 placeholder="ORDE-0001"
                 error={Boolean(errors.orsIdentifkeyOrde)}
-                helperText={errors.orsIdentifkeyOrde?.message}
+                helperText={
+                  errors.orsIdentifkeyOrde?.message ??
+                  "Código de la orden de servicio."
+                }
                 {...register("orsIdentifkeyOrde", {
-                  required: "La orden de servicio es obligatoria"
+                  required: "La orden de servicio es obligatoria",
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "La orden de servicio es obligatoria"
                 })}
               />
             </Grid>
@@ -175,9 +286,15 @@ export function PlanTrabajoForm({
                 label="Sitio / punto"
                 placeholder="PUNT-0001"
                 error={Boolean(errors.orsIdentifkeyPunt)}
-                helperText={errors.orsIdentifkeyPunt?.message}
+                helperText={
+                  errors.orsIdentifkeyPunt?.message ??
+                  "Código del sitio o punto de trabajo."
+                }
                 {...register("orsIdentifkeyPunt", {
-                  required: "El sitio o punto es obligatorio"
+                  required: "El sitio o punto es obligatorio",
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "El sitio o punto es obligatorio"
                 })}
               />
             </Grid>
@@ -188,19 +305,44 @@ export function PlanTrabajoForm({
                 multiline
                 minRows={3}
                 label="Actividad proyectada"
+                placeholder="Describe la actividad planeada para este frente o punto de trabajo"
                 error={Boolean(errors.orsDesactividadPltr)}
                 helperText={errors.orsDesactividadPltr?.message}
                 {...register("orsDesactividadPltr", {
-                  required: "La actividad proyectada es obligatoria"
+                  required: "La actividad proyectada es obligatoria",
+                  minLength: {
+                    value: 10,
+                    message: "La actividad debe tener mínimo 10 caracteres"
+                  },
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "La actividad proyectada es obligatoria"
                 })}
               />
             </Grid>
+          </Grid>
 
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Equipo, cantidad y valor
+          </Box>
+
+          <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="Resumen equipo"
                 placeholder="RSEQ-0001"
+                helperText="Opcional. Relación con resumen de equipo de la orden."
                 {...register("orsIdentifkeyRseq")}
               />
             </Grid>
@@ -210,6 +352,7 @@ export function PlanTrabajoForm({
                 fullWidth
                 label="Equipo / inventario"
                 placeholder="INVE-0001"
+                helperText="Opcional. Código del equipo o inventario asociado."
                 {...register("prvIdentifkeyInve")}
               />
             </Grid>
@@ -219,8 +362,20 @@ export function PlanTrabajoForm({
                 fullWidth
                 type="number"
                 label="Cantidad"
+                error={Boolean(errors.orsCantidunidadRseq)}
+                helperText={errors.orsCantidunidadRseq?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
                 {...register("orsCantidunidadRseq", {
-                  valueAsNumber: true
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "La cantidad no puede ser negativa"
+                  }
                 })}
               />
             </Grid>
@@ -230,8 +385,20 @@ export function PlanTrabajoForm({
                 fullWidth
                 type="number"
                 label="Valor unidad"
+                error={Boolean(errors.orsValorunidadRseq)}
+                helperText={errors.orsValorunidadRseq?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
                 {...register("orsValorunidadRseq", {
-                  valueAsNumber: true
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El valor unidad no puede ser negativo"
+                  }
                 })}
               />
             </Grid>
@@ -241,39 +408,92 @@ export function PlanTrabajoForm({
                 fullWidth
                 type="number"
                 label="Valor total"
+                helperText="Se calcula automáticamente: cantidad x valor unidad."
+                slotProps={{
+                  input: {
+                    readOnly: true
+                  },
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
                 {...register("orsValortotalRseq", {
                   valueAsNumber: true
                 })}
               />
             </Grid>
+          </Grid>
 
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Control interno
+          </Box>
+
+          <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Tipo registro interno"
-                placeholder="1"
-                {...register("orsTiporegistPltr")}
+              <Controller
+                name="orsTiporegistPltr"
+                control={control}
+                defaultValue="1"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Tipo registro interno"
+                    value={field.value ?? "1"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                  >
+                    <MenuItem value="1">Principal</MenuItem>
+                    <MenuItem value="2">Ajuste</MenuItem>
+                    <MenuItem value="3">Histórico</MenuItem>
+                  </TextField>
+                )}
               />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Estado"
-                placeholder="1"
-                {...register("orsEstadoregPltr")}
+              <Controller
+                name="orsEstadoregPltr"
+                control={control}
+                defaultValue="1"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Estado"
+                    value={field.value ?? "1"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                  >
+                    <MenuItem value="1">Activo</MenuItem>
+                    <MenuItem value="2">Inactivo</MenuItem>
+                  </TextField>
+                )}
               />
             </Grid>
           </Grid>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
 
           <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? "Guardando..." : "Guardar"}
+            {loading ? "Guardando..." : "Guardar plan"}
           </Button>
         </DialogActions>
       </Box>

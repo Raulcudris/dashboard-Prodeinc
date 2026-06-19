@@ -27,6 +27,17 @@ import {
   evidenciaTraceabilityService,
   EvidenciaTraceabilityData
 } from "../../../../../services/evidenciaTraceability.service";
+import { ReferenciaEvidenciaDto } from "../../../../../types/evidencias.types";
+
+function blurActiveElement() {
+  if (typeof document === "undefined") return;
+
+  const activeElement = document.activeElement;
+
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+}
 
 function InfoItem({
   label,
@@ -115,7 +126,7 @@ function MetricBox({
 }
 
 function isImageUrl(url?: string) {
-  const cleanUrl = String(url ?? "").toLowerCase();
+  const cleanUrl = String(url ?? "").toLowerCase().split("?")[0];
 
   return (
     cleanUrl.endsWith(".jpg") ||
@@ -126,11 +137,19 @@ function isImageUrl(url?: string) {
   );
 }
 
+function buildReferenceRowKey(row: ReferenciaEvidenciaDto, index: number) {
+  return (
+    row.eviPrimarykeyRefe ??
+    row.eviIdentifkeyRefe ??
+    `${row.eviIdentifkeyEvid ?? "REFE"}-${index}`
+  );
+}
+
 export default function EvidenciaDetallePage() {
   const params = useParams();
   const router = useRouter();
 
-  const evidenciaKey = params.evidenciaKey as string;
+  const evidenciaKey = String(params.evidenciaKey ?? "");
 
   const [data, setData] = useState<EvidenciaTraceabilityData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -166,6 +185,15 @@ export default function EvidenciaDetallePage() {
     void loadData();
   }, [evidenciaKey]);
 
+  const handleBack = () => {
+    blurActiveElement();
+    router.back();
+  };
+
+  const handleOpenFile = () => {
+    blurActiveElement();
+  };
+
   return (
     <Box sx={{ width: "100%" }}>
       <PageHeader
@@ -175,7 +203,8 @@ export default function EvidenciaDetallePage() {
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
-            onClick={() => router.back()}
+            onMouseDown={event => event.preventDefault()}
+            onClick={handleBack}
           >
             Volver
           </Button>
@@ -194,16 +223,17 @@ export default function EvidenciaDetallePage() {
         <>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <MetricBox
-                label="Referencias"
-                value={referencias.length}
-              />
+              <MetricBox label="Referencias" value={referencias.length} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
               <MetricBox
                 label="Tipo evidencia"
-                value={tipoEvidencia?.eviDescripcionTiev ?? evidencia?.eviIdentifkeyTiev ?? "-"}
+                value={
+                  tipoEvidencia?.eviDescripcionTiev ??
+                  evidencia?.eviIdentifkeyTiev ??
+                  "-"
+                }
               />
             </Grid>
 
@@ -323,6 +353,8 @@ export default function EvidenciaDetallePage() {
                       href={evidencia.eviUrlarchivoEvid}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={handleOpenFile}
                     >
                       Abrir archivo
                     </Button>
@@ -332,38 +364,43 @@ export default function EvidenciaDetallePage() {
             </CardContent>
           </Card>
 
-          {evidencia?.eviUrlarchivoEvid && isImageUrl(evidencia.eviUrlarchivoEvid) && (
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Box
-                  component="h2"
-                  sx={{
-                    m: 0,
-                    mb: 2,
-                    fontSize: "1.25rem",
-                    fontWeight: 900
-                  }}
-                >
-                  Vista previa
-                </Box>
+          {evidencia?.eviUrlarchivoEvid &&
+            isImageUrl(evidencia.eviUrlarchivoEvid) && (
+              <Card sx={{ mb: 3 }}>
+                <CardContent>
+                  <Box
+                    component="h2"
+                    sx={{
+                      m: 0,
+                      mb: 2,
+                      fontSize: "1.25rem",
+                      fontWeight: 900
+                    }}
+                  >
+                    Vista previa
+                  </Box>
 
-                <Box
-                  component="img"
-                  src={evidencia.eviUrlarchivoEvid}
-                  alt={evidencia.eviNombrearchivoEvid ?? evidencia.eviIdentifkeyEvid ?? "Evidencia"}
-                  sx={{
-                    width: "100%",
-                    maxHeight: 520,
-                    objectFit: "contain",
-                    borderRadius: 3,
-                    border: "1px solid",
-                    borderColor: "rgba(148, 163, 184, 0.25)",
-                    bgcolor: "#f8fafc"
-                  }}
-                />
-              </CardContent>
-            </Card>
-          )}
+                  <Box
+                    component="img"
+                    src={evidencia.eviUrlarchivoEvid}
+                    alt={
+                      evidencia.eviNombrearchivoEvid ??
+                      evidencia.eviIdentifkeyEvid ??
+                      "Evidencia"
+                    }
+                    sx={{
+                      width: "100%",
+                      maxHeight: 520,
+                      objectFit: "contain",
+                      borderRadius: 3,
+                      border: "1px solid",
+                      borderColor: "rgba(148, 163, 184, 0.25)",
+                      bgcolor: "#f8fafc"
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
           <CrudTableCard
             loading={false}
@@ -386,17 +423,24 @@ export default function EvidenciaDetallePage() {
 
               <TableBody>
                 {referencias.map((row, index) => (
-                  <TableRow
-                    key={
-                      row.eviPrimarykeyRefe ??
-                      row.eviIdentifkeyRefe ??
-                      index
-                    }
-                  >
+                  <TableRow key={buildReferenceRowKey(row, index)}>
                     <TableCell>{row.eviIdentifkeyRefe}</TableCell>
                     <TableCell>{row.eviTiporegistroRefe}</TableCell>
                     <TableCell>{row.eviIdentifregistroRefe}</TableCell>
-                    <TableCell>{row.eviObservacionRefe}</TableCell>
+                    <TableCell>
+                      <Box
+                        component="span"
+                        sx={{
+                          display: "inline-block",
+                          maxWidth: 360,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          verticalAlign: "middle"
+                        }}
+                      >
+                        {row.eviObservacionRefe}
+                      </Box>
+                    </TableCell>
                     <TableCell>{row.eviTiporegistRefe}</TableCell>
                     <TableCell>
                       <StatusChip value={row.eviEstadoregRefe} />

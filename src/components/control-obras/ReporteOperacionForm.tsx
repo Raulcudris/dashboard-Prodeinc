@@ -8,10 +8,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Grid,
+  MenuItem,
   TextField
 } from "@mui/material";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
+
 import { ReporteOperacionDto } from "../../types/controlObras.types";
 import { EstadoRegistro } from "../../types/common.types";
 
@@ -41,15 +44,35 @@ const emptyValues: FormValues = {
   orsEstadoregRope: "1"
 };
 
+function normalizeTipoRegistro(value?: string) {
+  const normalizedValue = String(value ?? "1");
+
+  return ["1", "2", "3"].includes(normalizedValue) ? normalizedValue : "1";
+}
+
+function normalizeEstadoRegistro(value?: string) {
+  const normalizedValue = String(value ?? "1");
+
+  return ["1", "2"].includes(normalizedValue) ? normalizedValue : "1";
+}
+
 function mapInitialData(data: ReporteOperacionDto): FormValues {
   return {
     orsIdentifkeyRope: data.orsIdentifkeyRope ?? "",
     orsIdentifkeyOrde: data.orsIdentifkeyOrde ?? "",
     orsFechareportRope: data.orsFechareportRope ?? "",
     orsObservacionRope: data.orsObservacionRope ?? "",
-    orsTiporegistRope: data.orsTiporegistRope ?? "1",
-    orsEstadoregRope: data.orsEstadoregRope ?? "1"
+    orsTiporegistRope: normalizeTipoRegistro(data.orsTiporegistRope),
+    orsEstadoregRope: normalizeEstadoRegistro(data.orsEstadoregRope)
   };
+}
+
+function normalizeKey(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function normalizeText(value: string) {
+  return value.trim();
 }
 
 export function ReporteOperacionForm({
@@ -63,6 +86,7 @@ export function ReporteOperacionForm({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors }
   } = useForm<FormValues>({
     defaultValues: emptyValues
@@ -82,12 +106,15 @@ export function ReporteOperacionForm({
   const submitForm = (values: FormValues) => {
     onSubmit({
       orsPrimarykeyRope: initialData?.orsPrimarykeyRope,
-      orsIdentifkeyRope: values.orsIdentifkeyRope.trim().toUpperCase(),
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde.trim(),
-      orsFechareportRope: values.orsFechareportRope,
-      orsObservacionRope: values.orsObservacionRope.trim(),
-      orsTiporegistRope: values.orsTiporegistRope || "1",
-      orsEstadoregRope: (values.orsEstadoregRope || "1") as EstadoRegistro
+      orsIdentifkeyRope: normalizeKey(values.orsIdentifkeyRope),
+      orsIdentifkeyOrde: normalizeKey(values.orsIdentifkeyOrde),
+      orsFechareportRope: values.orsFechareportRope || undefined,
+      orsObservacionRope:
+        normalizeText(values.orsObservacionRope) || undefined,
+      orsTiporegistRope: normalizeTipoRegistro(values.orsTiporegistRope),
+      orsEstadoregRope: normalizeEstadoRegistro(
+        values.orsEstadoregRope
+      ) as EstadoRegistro
     });
   };
 
@@ -97,15 +124,50 @@ export function ReporteOperacionForm({
       onClose={loading ? undefined : onClose}
       maxWidth="md"
       fullWidth
+      disableRestoreFocus
     >
       <DialogTitle>
-        {initialData
-          ? "Editar reporte de operación"
-          : "Crear reporte de operación"}
+        <Box
+          component="div"
+          sx={{
+            m: 0,
+            fontSize: "1.25rem",
+            fontWeight: 900
+          }}
+        >
+          {initialData
+            ? "Editar reporte de operación"
+            : "Crear reporte de operación"}
+        </Box>
+
+        <Box
+          component="p"
+          sx={{
+            m: 0,
+            mt: 0.5,
+            color: "text.secondary",
+            fontSize: "0.9rem"
+          }}
+        >
+          Registra el encabezado operativo diario para relacionar maquinaria,
+          equipos y detalles de operación.
+        </Box>
       </DialogTitle>
 
       <Box component="form" onSubmit={handleSubmit(submitForm)}>
         <DialogContent dividers>
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Información principal
+          </Box>
+
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
@@ -113,9 +175,24 @@ export function ReporteOperacionForm({
                 label="Código reporte"
                 placeholder="ROPE-0001"
                 error={Boolean(errors.orsIdentifkeyRope)}
-                helperText={errors.orsIdentifkeyRope?.message}
+                helperText={
+                  errors.orsIdentifkeyRope?.message ??
+                  "Código único del reporte de operación."
+                }
+                slotProps={{
+                  input: {
+                    readOnly: Boolean(initialData)
+                  }
+                }}
                 {...register("orsIdentifkeyRope", {
-                  required: "El código del reporte es obligatorio"
+                  required: "El código del reporte es obligatorio",
+                  minLength: {
+                    value: 3,
+                    message: "El código debe tener mínimo 3 caracteres"
+                  },
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "El código del reporte es obligatorio"
                 })}
               />
             </Grid>
@@ -126,9 +203,15 @@ export function ReporteOperacionForm({
                 label="Orden de servicio"
                 placeholder="ORDE-0001"
                 error={Boolean(errors.orsIdentifkeyOrde)}
-                helperText={errors.orsIdentifkeyOrde?.message}
+                helperText={
+                  errors.orsIdentifkeyOrde?.message ??
+                  "Código de la orden de servicio asociada."
+                }
                 {...register("orsIdentifkeyOrde", {
-                  required: "La orden de servicio es obligatoria"
+                  required: "La orden de servicio es obligatoria",
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "La orden de servicio es obligatoria"
                 })}
               />
             </Grid>
@@ -138,56 +221,123 @@ export function ReporteOperacionForm({
                 fullWidth
                 type="date"
                 label="Fecha reporte"
+                error={Boolean(errors.orsFechareportRope)}
+                helperText={errors.orsFechareportRope?.message}
                 slotProps={{
                   inputLabel: {
                     shrink: true
                   }
                 }}
-                error={Boolean(errors.orsFechareportRope)}
-                helperText={errors.orsFechareportRope?.message}
                 {...register("orsFechareportRope", {
                   required: "La fecha del reporte es obligatoria"
                 })}
               />
             </Grid>
+          </Grid>
 
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                label="Tipo registro interno"
-                placeholder="1"
-                {...register("orsTiporegistRope")}
-              />
-            </Grid>
+          <Divider sx={{ my: 3 }} />
 
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                label="Estado"
-                placeholder="1"
-                {...register("orsEstadoregRope")}
-              />
-            </Grid>
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Observación operacional
+          </Box>
 
+          <Grid container spacing={2}>
             <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 multiline
-                minRows={3}
+                minRows={4}
                 label="Observación"
-                {...register("orsObservacionRope")}
+                placeholder="Describe condiciones de operación, disponibilidad de equipos, restricciones, novedades o comentarios relevantes."
+                error={Boolean(errors.orsObservacionRope)}
+                helperText={errors.orsObservacionRope?.message}
+                {...register("orsObservacionRope", {
+                  minLength: {
+                    value: 5,
+                    message: "La observación debe tener mínimo 5 caracteres"
+                  }
+                })}
+              />
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Control interno
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Controller
+                name="orsTiporegistRope"
+                control={control}
+                defaultValue="1"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Tipo registro interno"
+                    value={field.value ?? "1"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                  >
+                    <MenuItem value="1">Principal</MenuItem>
+                    <MenuItem value="2">Ajuste</MenuItem>
+                    <MenuItem value="3">Histórico</MenuItem>
+                  </TextField>
+                )}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Controller
+                name="orsEstadoregRope"
+                control={control}
+                defaultValue="1"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Estado"
+                    value={field.value ?? "1"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                  >
+                    <MenuItem value="1">Activo</MenuItem>
+                    <MenuItem value="2">Inactivo</MenuItem>
+                  </TextField>
+                )}
               />
             </Grid>
           </Grid>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
 
           <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? "Guardando..." : "Guardar"}
+            {loading ? "Guardando..." : "Guardar reporte"}
           </Button>
         </DialogActions>
       </Box>

@@ -8,10 +8,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Grid,
+  MenuItem,
   TextField
 } from "@mui/material";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
+
 import { DetalleEquipoOperacionDto } from "../../types/controlObras.types";
 import { EstadoRegistro } from "../../types/common.types";
 
@@ -95,6 +98,18 @@ const emptyValues: FormValues = {
   orsEstadoregDeop: "1"
 };
 
+function normalizeTipoRegistro(value?: string) {
+  const normalizedValue = String(value ?? "1");
+
+  return ["1", "2", "3"].includes(normalizedValue) ? normalizedValue : "1";
+}
+
+function normalizeEstadoRegistro(value?: string) {
+  const normalizedValue = String(value ?? "1");
+
+  return ["1", "2"].includes(normalizedValue) ? normalizedValue : "1";
+}
+
 function mapInitialData(data: DetalleEquipoOperacionDto): FormValues {
   return {
     orsIdentifkeyDeop: data.orsIdentifkeyDeop ?? "",
@@ -142,8 +157,8 @@ function mapInitialData(data: DetalleEquipoOperacionDto): FormValues {
     orsFirmasuministroDeop: data.orsFirmasuministroDeop ?? "",
     orsFirmaseguimientoDeop: data.orsFirmaseguimientoDeop ?? "",
 
-    orsTiporegistDeop: data.orsTiporegistDeop ?? "1",
-    orsEstadoregDeop: data.orsEstadoregDeop ?? "1"
+    orsTiporegistDeop: normalizeTipoRegistro(data.orsTiporegistDeop),
+    orsEstadoregDeop: normalizeEstadoRegistro(data.orsEstadoregDeop)
   };
 }
 
@@ -153,6 +168,14 @@ function toOptionalNumber(value: number | "" | undefined) {
   }
 
   return Number(value);
+}
+
+function normalizeKey(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function normalizeText(value: string) {
+  return value.trim();
 }
 
 export function DetalleEquipoOperacionForm({
@@ -166,6 +189,8 @@ export function DetalleEquipoOperacionForm({
     register,
     handleSubmit,
     reset,
+    getValues,
+    control,
     formState: { errors }
   } = useForm<FormValues>({
     defaultValues: emptyValues
@@ -186,23 +211,23 @@ export function DetalleEquipoOperacionForm({
     onSubmit({
       orsPrimarykeyDeop: initialData?.orsPrimarykeyDeop,
 
-      orsIdentifkeyDeop: values.orsIdentifkeyDeop.trim().toUpperCase(),
-      orsIdentifkeyRope: values.orsIdentifkeyRope.trim(),
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde.trim(),
-      orsIdentifkeyPsem: values.orsIdentifkeyPsem.trim(),
-      orsIdentifkeyPlse: values.orsIdentifkeyPlse.trim(),
-      orsIdentifkeyPunt: values.orsIdentifkeyPunt.trim(),
+      orsIdentifkeyDeop: normalizeKey(values.orsIdentifkeyDeop),
+      orsIdentifkeyRope: normalizeKey(values.orsIdentifkeyRope),
+      orsIdentifkeyOrde: normalizeKey(values.orsIdentifkeyOrde),
+      orsIdentifkeyPsem: normalizeKey(values.orsIdentifkeyPsem) || undefined,
+      orsIdentifkeyPlse: normalizeKey(values.orsIdentifkeyPlse) || undefined,
+      orsIdentifkeyPunt: normalizeKey(values.orsIdentifkeyPunt) || undefined,
 
-      prvIdentifkeyInve: values.prvIdentifkeyInve.trim(),
-      prvTipoequipoTieq: values.prvTipoequipoTieq.trim().toUpperCase(),
+      prvIdentifkeyInve: normalizeKey(values.prvIdentifkeyInve),
+      prvTipoequipoTieq: normalizeKey(values.prvTipoequipoTieq) || undefined,
 
-      orsNombrequipoDeop: values.orsNombrequipoDeop.trim(),
-      orsRefermodeloDeop: values.orsRefermodeloDeop.trim(),
-      orsNroregistroDeop: values.orsNroregistroDeop.trim(),
+      orsNombrequipoDeop: normalizeText(values.orsNombrequipoDeop) || undefined,
+      orsRefermodeloDeop: normalizeText(values.orsRefermodeloDeop) || undefined,
+      orsNroregistroDeop: normalizeKey(values.orsNroregistroDeop) || undefined,
 
-      orsUnidadDeop: values.orsUnidadDeop.trim().toUpperCase(),
-      orsTipocontrolDeop: values.orsTipocontrolDeop.trim().toUpperCase(),
-      orsFechatrabajoDeop: values.orsFechatrabajoDeop,
+      orsUnidadDeop: normalizeKey(values.orsUnidadDeop) || undefined,
+      orsTipocontrolDeop: normalizeKey(values.orsTipocontrolDeop) || undefined,
+      orsFechatrabajoDeop: values.orsFechatrabajoDeop || undefined,
 
       orsHorometroiniDeop: toOptionalNumber(values.orsHorometroiniDeop),
       orsHorometrofinDeop: toOptionalNumber(values.orsHorometrofinDeop),
@@ -213,12 +238,16 @@ export function DetalleEquipoOperacionForm({
       orsDiatrabajadoDeop: toOptionalNumber(values.orsDiatrabajadoDeop),
       orsValorunidadDeop: toOptionalNumber(values.orsValorunidadDeop),
 
-      orsObservacionDeop: values.orsObservacionDeop.trim(),
-      orsFirmasuministroDeop: values.orsFirmasuministroDeop.trim(),
-      orsFirmaseguimientoDeop: values.orsFirmaseguimientoDeop.trim(),
+      orsObservacionDeop: normalizeText(values.orsObservacionDeop) || undefined,
+      orsFirmasuministroDeop:
+        normalizeText(values.orsFirmasuministroDeop) || undefined,
+      orsFirmaseguimientoDeop:
+        normalizeText(values.orsFirmaseguimientoDeop) || undefined,
 
-      orsTiporegistDeop: values.orsTiporegistDeop || "1",
-      orsEstadoregDeop: (values.orsEstadoregDeop || "1") as EstadoRegistro
+      orsTiporegistDeop: normalizeTipoRegistro(values.orsTiporegistDeop),
+      orsEstadoregDeop: normalizeEstadoRegistro(
+        values.orsEstadoregDeop
+      ) as EstadoRegistro
     });
   };
 
@@ -228,15 +257,50 @@ export function DetalleEquipoOperacionForm({
       onClose={loading ? undefined : onClose}
       maxWidth="lg"
       fullWidth
+      disableRestoreFocus
     >
       <DialogTitle>
-        {initialData
-          ? "Editar detalle de operación"
-          : "Crear detalle de operación"}
+        <Box
+          component="div"
+          sx={{
+            m: 0,
+            fontSize: "1.25rem",
+            fontWeight: 900
+          }}
+        >
+          {initialData
+            ? "Editar detalle de operación"
+            : "Crear detalle de operación"}
+        </Box>
+
+        <Box
+          component="p"
+          sx={{
+            m: 0,
+            mt: 0.5,
+            color: "text.secondary",
+            fontSize: "0.9rem"
+          }}
+        >
+          Registra la operación diaria de maquinaria o equipo asociada a un
+          reporte de operación.
+        </Box>
       </DialogTitle>
 
       <Box component="form" onSubmit={handleSubmit(submitForm)}>
         <DialogContent dividers>
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Relación con obra
+          </Box>
+
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 3 }}>
               <TextField
@@ -244,9 +308,24 @@ export function DetalleEquipoOperacionForm({
                 label="Código detalle"
                 placeholder="DEOP-0001"
                 error={Boolean(errors.orsIdentifkeyDeop)}
-                helperText={errors.orsIdentifkeyDeop?.message}
+                helperText={
+                  errors.orsIdentifkeyDeop?.message ??
+                  "Código único del detalle de operación."
+                }
+                slotProps={{
+                  input: {
+                    readOnly: Boolean(initialData)
+                  }
+                }}
                 {...register("orsIdentifkeyDeop", {
-                  required: "El código del detalle es obligatorio"
+                  required: "El código del detalle es obligatorio",
+                  minLength: {
+                    value: 3,
+                    message: "El código debe tener mínimo 3 caracteres"
+                  },
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "El código del detalle es obligatorio"
                 })}
               />
             </Grid>
@@ -257,9 +336,15 @@ export function DetalleEquipoOperacionForm({
                 label="Reporte operación"
                 placeholder="ROPE-0001"
                 error={Boolean(errors.orsIdentifkeyRope)}
-                helperText={errors.orsIdentifkeyRope?.message}
+                helperText={
+                  errors.orsIdentifkeyRope?.message ??
+                  "Código del reporte de operación."
+                }
                 {...register("orsIdentifkeyRope", {
-                  required: "El reporte de operación es obligatorio"
+                  required: "El reporte de operación es obligatorio",
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "El reporte de operación es obligatorio"
                 })}
               />
             </Grid>
@@ -270,9 +355,15 @@ export function DetalleEquipoOperacionForm({
                 label="Orden servicio"
                 placeholder="ORDE-0001"
                 error={Boolean(errors.orsIdentifkeyOrde)}
-                helperText={errors.orsIdentifkeyOrde?.message}
+                helperText={
+                  errors.orsIdentifkeyOrde?.message ??
+                  "Código de la orden asociada."
+                }
                 {...register("orsIdentifkeyOrde", {
-                  required: "La orden de servicio es obligatoria"
+                  required: "La orden de servicio es obligatoria",
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "La orden de servicio es obligatoria"
                 })}
               />
             </Grid>
@@ -282,6 +373,7 @@ export function DetalleEquipoOperacionForm({
                 fullWidth
                 label="Sitio / punto"
                 placeholder="PUNT-0001"
+                helperText="Opcional. Sitio o punto de trabajo."
                 {...register("orsIdentifkeyPunt")}
               />
             </Grid>
@@ -291,6 +383,7 @@ export function DetalleEquipoOperacionForm({
                 fullWidth
                 label="Proyección semanal"
                 placeholder="PSEM-0001"
+                helperText="Opcional. Semana proyectada relacionada."
                 {...register("orsIdentifkeyPsem")}
               />
             </Grid>
@@ -300,19 +393,41 @@ export function DetalleEquipoOperacionForm({
                 fullWidth
                 label="Plan semanal"
                 placeholder="PLSE-0001"
+                helperText="Opcional. Plan semanal relacionado."
                 {...register("orsIdentifkeyPlse")}
               />
             </Grid>
+          </Grid>
 
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Información del equipo
+          </Box>
+
+          <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 label="Equipo / inventario"
-                placeholder="EQ-0001"
+                placeholder="INVE-0001"
                 error={Boolean(errors.prvIdentifkeyInve)}
-                helperText={errors.prvIdentifkeyInve?.message}
+                helperText={
+                  errors.prvIdentifkeyInve?.message ??
+                  "Código del equipo o inventario."
+                }
                 {...register("prvIdentifkeyInve", {
-                  required: "El equipo es obligatorio"
+                  required: "El equipo es obligatorio",
+                  validate: value =>
+                    value.trim().length > 0 || "El equipo es obligatorio"
                 })}
               />
             </Grid>
@@ -322,109 +437,91 @@ export function DetalleEquipoOperacionForm({
                 fullWidth
                 label="Tipo equipo"
                 placeholder="RETROEXCAVADORA"
+                helperText="Opcional. Tipo de maquinaria o equipo."
                 {...register("prvTipoequipoTieq")}
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 label="Nombre equipo"
                 placeholder="Retroexcavadora CAT 420"
+                helperText="Opcional. Nombre descriptivo del equipo."
                 {...register("orsNombrequipoDeop")}
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 label="Referencia / modelo"
                 placeholder="CAT 420F2"
+                helperText="Opcional. Modelo o referencia."
                 {...register("orsRefermodeloDeop")}
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 label="Número registro"
                 placeholder="PLACA / SERIAL"
+                helperText="Opcional. Placa, serial o registro."
                 {...register("orsNroregistroDeop")}
               />
             </Grid>
+          </Grid>
 
-            <Grid size={{ xs: 12, md: 4 }}>
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Control de operación
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 label="Unidad"
                 placeholder="HORA, DIA, KM"
+                helperText="Unidad de control operacional."
                 {...register("orsUnidadDeop")}
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 label="Tipo control"
                 placeholder="HOROMETRO, KILOMETRAJE, DIA"
+                helperText="Tipo de medición del trabajo."
                 {...register("orsTipocontrolDeop")}
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 fullWidth
                 type="date"
                 label="Fecha trabajo"
+                error={Boolean(errors.orsFechatrabajoDeop)}
+                helperText={errors.orsFechatrabajoDeop?.message}
                 slotProps={{
                   inputLabel: {
                     shrink: true
                   }
                 }}
-                {...register("orsFechatrabajoDeop")}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Horómetro inicial"
-                {...register("orsHorometroiniDeop", {
-                  valueAsNumber: true
-                })}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Horómetro final"
-                {...register("orsHorometrofinDeop", {
-                  valueAsNumber: true
-                })}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Km inicial"
-                {...register("orsKminicialDeop", {
-                  valueAsNumber: true
-                })}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Km final"
-                {...register("orsKmfinalDeop", {
-                  valueAsNumber: true
+                {...register("orsFechatrabajoDeop", {
+                  required: "La fecha de trabajo es obligatoria"
                 })}
               />
             </Grid>
@@ -434,8 +531,146 @@ export function DetalleEquipoOperacionForm({
                 fullWidth
                 type="number"
                 label="Día trabajado"
+                error={Boolean(errors.orsDiatrabajadoDeop)}
+                helperText={errors.orsDiatrabajadoDeop?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
                 {...register("orsDiatrabajadoDeop", {
-                  valueAsNumber: true
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El día trabajado no puede ser negativo"
+                  }
+                })}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Horómetro inicial"
+                error={Boolean(errors.orsHorometroiniDeop)}
+                helperText={errors.orsHorometroiniDeop?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
+                {...register("orsHorometroiniDeop", {
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El horómetro inicial no puede ser negativo"
+                  }
+                })}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Horómetro final"
+                error={Boolean(errors.orsHorometrofinDeop)}
+                helperText={errors.orsHorometrofinDeop?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
+                {...register("orsHorometrofinDeop", {
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El horómetro final no puede ser negativo"
+                  },
+                  validate: value => {
+                    const inicial = getValues("orsHorometroiniDeop");
+
+                    if (
+                      value === "" ||
+                      inicial === "" ||
+                      Number.isNaN(value) ||
+                      Number.isNaN(inicial)
+                    ) {
+                      return true;
+                    }
+
+                    return (
+                      Number(value) >= Number(inicial) ||
+                      "El horómetro final no puede ser menor al inicial"
+                    );
+                  }
+                })}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Km inicial"
+                error={Boolean(errors.orsKminicialDeop)}
+                helperText={errors.orsKminicialDeop?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
+                {...register("orsKminicialDeop", {
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El km inicial no puede ser negativo"
+                  }
+                })}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Km final"
+                error={Boolean(errors.orsKmfinalDeop)}
+                helperText={errors.orsKmfinalDeop?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
+                {...register("orsKmfinalDeop", {
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El km final no puede ser negativo"
+                  },
+                  validate: value => {
+                    const inicial = getValues("orsKminicialDeop");
+
+                    if (
+                      value === "" ||
+                      inicial === "" ||
+                      Number.isNaN(value) ||
+                      Number.isNaN(inicial)
+                    ) {
+                      return true;
+                    }
+
+                    return (
+                      Number(value) >= Number(inicial) ||
+                      "El km final no puede ser menor al inicial"
+                    );
+                  }
                 })}
               />
             </Grid>
@@ -445,37 +680,55 @@ export function DetalleEquipoOperacionForm({
                 fullWidth
                 type="number"
                 label="Valor unidad"
+                error={Boolean(errors.orsValorunidadDeop)}
+                helperText={errors.orsValorunidadDeop?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
                 {...register("orsValorunidadDeop", {
-                  valueAsNumber: true
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El valor unidad no puede ser negativo"
+                  }
                 })}
               />
             </Grid>
+          </Grid>
 
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                label="Tipo registro interno"
-                placeholder="1"
-                {...register("orsTiporegistDeop")}
-              />
-            </Grid>
+          <Divider sx={{ my: 3 }} />
 
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                label="Estado"
-                placeholder="1"
-                {...register("orsEstadoregDeop")}
-              />
-            </Grid>
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Observación y firmas
+          </Box>
 
+          <Grid container spacing={2}>
             <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 multiline
                 minRows={3}
                 label="Observación"
-                {...register("orsObservacionDeop")}
+                placeholder="Registra novedades, condiciones de operación o comentarios del equipo."
+                error={Boolean(errors.orsObservacionDeop)}
+                helperText={errors.orsObservacionDeop?.message}
+                {...register("orsObservacionDeop", {
+                  minLength: {
+                    value: 5,
+                    message: "La observación debe tener mínimo 5 caracteres"
+                  }
+                })}
               />
             </Grid>
 
@@ -484,6 +737,7 @@ export function DetalleEquipoOperacionForm({
                 fullWidth
                 label="Firma suministro"
                 placeholder="Nombre, URL o referencia de firma"
+                helperText="Opcional."
                 {...register("orsFirmasuministroDeop")}
               />
             </Grid>
@@ -493,19 +747,81 @@ export function DetalleEquipoOperacionForm({
                 fullWidth
                 label="Firma seguimiento"
                 placeholder="Nombre, URL o referencia de firma"
+                helperText="Opcional."
                 {...register("orsFirmaseguimientoDeop")}
+              />
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Control interno
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Controller
+                name="orsTiporegistDeop"
+                control={control}
+                defaultValue="1"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Tipo registro interno"
+                    value={field.value ?? "1"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                  >
+                    <MenuItem value="1">Principal</MenuItem>
+                    <MenuItem value="2">Ajuste</MenuItem>
+                    <MenuItem value="3">Histórico</MenuItem>
+                  </TextField>
+                )}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Controller
+                name="orsEstadoregDeop"
+                control={control}
+                defaultValue="1"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Estado"
+                    value={field.value ?? "1"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                  >
+                    <MenuItem value="1">Activo</MenuItem>
+                    <MenuItem value="2">Inactivo</MenuItem>
+                  </TextField>
+                )}
               />
             </Grid>
           </Grid>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
 
           <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? "Guardando..." : "Guardar"}
+            {loading ? "Guardando..." : "Guardar detalle"}
           </Button>
         </DialogActions>
       </Box>

@@ -8,10 +8,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Grid,
+  MenuItem,
   TextField
 } from "@mui/material";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
+
 import { InformeSemanalDto } from "../../types/controlObras.types";
 import { EstadoRegistro } from "../../types/common.types";
 
@@ -63,6 +66,18 @@ const emptyValues: FormValues = {
   orsEstadoregInse: "1"
 };
 
+function normalizeTipoRegistro(value?: string) {
+  const normalizedValue = String(value ?? "1");
+
+  return ["1", "2", "3"].includes(normalizedValue) ? normalizedValue : "1";
+}
+
+function normalizeEstadoRegistro(value?: string) {
+  const normalizedValue = String(value ?? "1");
+
+  return ["1", "2"].includes(normalizedValue) ? normalizedValue : "1";
+}
+
 function mapInitialData(data: InformeSemanalDto): FormValues {
   return {
     orsIdentifkeyInse: data.orsIdentifkeyInse ?? "",
@@ -89,8 +104,8 @@ function mapInitialData(data: InformeSemanalDto): FormValues {
         ? data.orsPorccumplimientoInse
         : "",
 
-    orsTiporegistInse: data.orsTiporegistInse ?? "1",
-    orsEstadoregInse: data.orsEstadoregInse ?? "1"
+    orsTiporegistInse: normalizeTipoRegistro(data.orsTiporegistInse),
+    orsEstadoregInse: normalizeEstadoRegistro(data.orsEstadoregInse)
   };
 }
 
@@ -111,6 +126,14 @@ function calculateCompliance(programado: number | "", ejecutado: number | "") {
   return Number(((executed / planned) * 100).toFixed(2));
 }
 
+function normalizeKey(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function normalizeText(value: string) {
+  return value.trim();
+}
+
 export function InformeSemanalForm({
   open,
   loading = false,
@@ -124,6 +147,8 @@ export function InformeSemanalForm({
     reset,
     watch,
     setValue,
+    getValues,
+    control,
     formState: { errors }
   } = useForm<FormValues>({
     defaultValues: emptyValues
@@ -144,27 +169,29 @@ export function InformeSemanalForm({
   }, [open, initialData, reset]);
 
   useEffect(() => {
+    if (!open) return;
+
     const compliance = calculateCompliance(avanceProgramado, avanceEjecutado);
 
     setValue("orsPorccumplimientoInse", compliance, {
       shouldDirty: true,
-      shouldValidate: false
+      shouldValidate: true
     });
-  }, [avanceProgramado, avanceEjecutado, setValue]);
+  }, [open, avanceProgramado, avanceEjecutado, setValue]);
 
   const submitForm = (values: FormValues) => {
     onSubmit({
       orsPrimarykeyInse: initialData?.orsPrimarykeyInse,
-      orsIdentifkeyInse: values.orsIdentifkeyInse.trim().toUpperCase(),
+      orsIdentifkeyInse: normalizeKey(values.orsIdentifkeyInse),
 
-      orsIdentifkeyOrde: values.orsIdentifkeyOrde.trim(),
-      orsIdentifkeyPsem: values.orsIdentifkeyPsem.trim(),
-      orsIdentifkeyPlse: values.orsIdentifkeyPlse.trim(),
+      orsIdentifkeyOrde: normalizeKey(values.orsIdentifkeyOrde),
+      orsIdentifkeyPsem: normalizeKey(values.orsIdentifkeyPsem) || undefined,
+      orsIdentifkeyPlse: normalizeKey(values.orsIdentifkeyPlse) || undefined,
 
-      orsFechainicioInse: values.orsFechainicioInse,
-      orsFechafinInse: values.orsFechafinInse,
-      orsDescripcionInse: values.orsDescripcionInse.trim(),
-      orsObservacionInse: values.orsObservacionInse.trim(),
+      orsFechainicioInse: values.orsFechainicioInse || undefined,
+      orsFechafinInse: values.orsFechafinInse || undefined,
+      orsDescripcionInse: normalizeText(values.orsDescripcionInse) || undefined,
+      orsObservacionInse: normalizeText(values.orsObservacionInse) || undefined,
 
       orsAvanceprogramadoInse: toOptionalNumber(
         values.orsAvanceprogramadoInse
@@ -174,8 +201,10 @@ export function InformeSemanalForm({
         values.orsPorccumplimientoInse
       ),
 
-      orsTiporegistInse: values.orsTiporegistInse || "1",
-      orsEstadoregInse: (values.orsEstadoregInse || "1") as EstadoRegistro
+      orsTiporegistInse: normalizeTipoRegistro(values.orsTiporegistInse),
+      orsEstadoregInse: normalizeEstadoRegistro(
+        values.orsEstadoregInse
+      ) as EstadoRegistro
     });
   };
 
@@ -185,13 +214,48 @@ export function InformeSemanalForm({
       onClose={loading ? undefined : onClose}
       maxWidth="lg"
       fullWidth
+      disableRestoreFocus
     >
       <DialogTitle>
-        {initialData ? "Editar informe semanal" : "Crear informe semanal"}
+        <Box
+          component="div"
+          sx={{
+            m: 0,
+            fontSize: "1.25rem",
+            fontWeight: 900
+          }}
+        >
+          {initialData ? "Editar informe semanal" : "Crear informe semanal"}
+        </Box>
+
+        <Box
+          component="p"
+          sx={{
+            m: 0,
+            mt: 0.5,
+            color: "text.secondary",
+            fontSize: "0.9rem"
+          }}
+        >
+          Consolida el avance semanal programado contra ejecutado para una orden
+          de servicio.
+        </Box>
       </DialogTitle>
 
       <Box component="form" onSubmit={handleSubmit(submitForm)}>
         <DialogContent dividers>
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Información principal
+          </Box>
+
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 3 }}>
               <TextField
@@ -199,9 +263,24 @@ export function InformeSemanalForm({
                 label="Código informe"
                 placeholder="INSE-0001"
                 error={Boolean(errors.orsIdentifkeyInse)}
-                helperText={errors.orsIdentifkeyInse?.message}
+                helperText={
+                  errors.orsIdentifkeyInse?.message ??
+                  "Código único del informe semanal."
+                }
+                slotProps={{
+                  input: {
+                    readOnly: Boolean(initialData)
+                  }
+                }}
                 {...register("orsIdentifkeyInse", {
-                  required: "El código del informe es obligatorio"
+                  required: "El código del informe es obligatorio",
+                  minLength: {
+                    value: 3,
+                    message: "El código debe tener mínimo 3 caracteres"
+                  },
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "El código del informe es obligatorio"
                 })}
               />
             </Grid>
@@ -212,9 +291,15 @@ export function InformeSemanalForm({
                 label="Orden de servicio"
                 placeholder="ORDE-0001"
                 error={Boolean(errors.orsIdentifkeyOrde)}
-                helperText={errors.orsIdentifkeyOrde?.message}
+                helperText={
+                  errors.orsIdentifkeyOrde?.message ??
+                  "Código de la orden asociada."
+                }
                 {...register("orsIdentifkeyOrde", {
-                  required: "La orden de servicio es obligatoria"
+                  required: "La orden de servicio es obligatoria",
+                  validate: value =>
+                    value.trim().length > 0 ||
+                    "La orden de servicio es obligatoria"
                 })}
               />
             </Grid>
@@ -224,6 +309,7 @@ export function InformeSemanalForm({
                 fullWidth
                 label="Proyección semanal"
                 placeholder="PSEM-0001"
+                helperText="Opcional. Semana proyectada relacionada."
                 {...register("orsIdentifkeyPsem")}
               />
             </Grid>
@@ -233,68 +319,148 @@ export function InformeSemanalForm({
                 fullWidth
                 label="Plan semanal"
                 placeholder="PLSE-0001"
+                helperText="Opcional. Plan semanal relacionado."
                 {...register("orsIdentifkeyPlse")}
               />
             </Grid>
+          </Grid>
 
-            <Grid size={{ xs: 12, md: 3 }}>
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Periodo del informe
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 type="date"
                 label="Fecha inicio"
+                error={Boolean(errors.orsFechainicioInse)}
+                helperText={errors.orsFechainicioInse?.message}
                 slotProps={{
                   inputLabel: {
                     shrink: true
                   }
                 }}
-                {...register("orsFechainicioInse")}
+                {...register("orsFechainicioInse", {
+                  required: "La fecha de inicio es obligatoria"
+                })}
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 3 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 type="date"
                 label="Fecha fin"
+                error={Boolean(errors.orsFechafinInse)}
+                helperText={errors.orsFechafinInse?.message}
                 slotProps={{
                   inputLabel: {
                     shrink: true
                   }
                 }}
-                {...register("orsFechafinInse")}
+                {...register("orsFechafinInse", {
+                  required: "La fecha fin es obligatoria",
+                  validate: value => {
+                    const fechaInicio = getValues("orsFechainicioInse");
+
+                    if (!fechaInicio || !value) return true;
+
+                    return (
+                      value >= fechaInicio ||
+                      "La fecha fin no puede ser menor a la fecha inicio"
+                    );
+                  }
+                })}
               />
             </Grid>
+          </Grid>
 
-            <Grid size={{ xs: 12, md: 2 }}>
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Avance semanal
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 type="number"
                 label="Avance programado"
+                error={Boolean(errors.orsAvanceprogramadoInse)}
+                helperText={errors.orsAvanceprogramadoInse?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
                 {...register("orsAvanceprogramadoInse", {
-                  valueAsNumber: true
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El avance programado no puede ser negativo"
+                  }
                 })}
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 2 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 type="number"
                 label="Avance ejecutado"
+                error={Boolean(errors.orsAvanceejecutadoInse)}
+                helperText={errors.orsAvanceejecutadoInse?.message}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
+                  }
+                }}
                 {...register("orsAvanceejecutadoInse", {
-                  valueAsNumber: true
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "El avance ejecutado no puede ser negativo"
+                  }
                 })}
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 2 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 type="number"
                 label="% cumplimiento"
+                helperText="Se calcula automáticamente: ejecutado / programado x 100."
                 slotProps={{
                   input: {
                     readOnly: true
+                  },
+                  htmlInput: {
+                    min: 0,
+                    step: "0.01"
                   }
                 }}
                 {...register("orsPorccumplimientoInse", {
@@ -302,14 +468,38 @@ export function InformeSemanalForm({
                 })}
               />
             </Grid>
+          </Grid>
 
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Descripción y observaciones
+          </Box>
+
+          <Grid container spacing={2}>
             <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Descripción"
                 multiline
                 minRows={3}
-                {...register("orsDescripcionInse")}
+                placeholder="Describe el resumen del avance semanal."
+                error={Boolean(errors.orsDescripcionInse)}
+                helperText={errors.orsDescripcionInse?.message}
+                {...register("orsDescripcionInse", {
+                  minLength: {
+                    value: 5,
+                    message: "La descripción debe tener mínimo 5 caracteres"
+                  }
+                })}
               />
             </Grid>
 
@@ -319,37 +509,88 @@ export function InformeSemanalForm({
                 label="Observación"
                 multiline
                 minRows={3}
-                {...register("orsObservacionInse")}
+                placeholder="Registra restricciones, pendientes, novedades o comentarios del periodo."
+                error={Boolean(errors.orsObservacionInse)}
+                helperText={errors.orsObservacionInse?.message}
+                {...register("orsObservacionInse", {
+                  minLength: {
+                    value: 5,
+                    message: "La observación debe tener mínimo 5 caracteres"
+                  }
+                })}
+              />
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Box
+            component="h3"
+            sx={{
+              m: 0,
+              mb: 2,
+              fontSize: "1rem",
+              fontWeight: 850
+            }}
+          >
+            Control interno
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Controller
+                name="orsTiporegistInse"
+                control={control}
+                defaultValue="1"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Tipo registro interno"
+                    value={field.value ?? "1"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                  >
+                    <MenuItem value="1">Principal</MenuItem>
+                    <MenuItem value="2">Ajuste</MenuItem>
+                    <MenuItem value="3">Histórico</MenuItem>
+                  </TextField>
+                )}
               />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Tipo registro interno"
-                placeholder="1"
-                {...register("orsTiporegistInse")}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Estado"
-                placeholder="1"
-                {...register("orsEstadoregInse")}
+              <Controller
+                name="orsEstadoregInse"
+                control={control}
+                defaultValue="1"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Estado"
+                    value={field.value ?? "1"}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                  >
+                    <MenuItem value="1">Activo</MenuItem>
+                    <MenuItem value="2">Inactivo</MenuItem>
+                  </TextField>
+                )}
               />
             </Grid>
           </Grid>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
 
           <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? "Guardando..." : "Guardar"}
+            {loading ? "Guardando..." : "Guardar informe"}
           </Button>
         </DialogActions>
       </Box>
