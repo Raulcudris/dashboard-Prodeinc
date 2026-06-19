@@ -29,6 +29,25 @@ type ConfirmAction =
   | { type: "status"; row: UnidadMedidaDto }
   | null;
 
+function blurActiveElement() {
+  if (typeof document === "undefined") return;
+
+  const activeElement = document.activeElement;
+
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+}
+
+function openModalSafely(callback: () => void) {
+  blurActiveElement();
+  window.requestAnimationFrame(() => callback());
+}
+
+function buildRowKey(row: UnidadMedidaDto, index: number) {
+  return row.prvTipunidamedUnme ?? `UNME-${index}`;
+}
+
 export default function UnidadesMedidaPage() {
   const [rows, setRows] = useState<UnidadMedidaDto[]>([]);
   const [filter, setFilter] = useState("");
@@ -44,10 +63,11 @@ export default function UnidadesMedidaPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.prvTipunidamedUnme,
         row.prvDescmedidaUnme,
@@ -70,11 +90,11 @@ export default function UnidadesMedidaPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
-        "No fue posible cargar las unidades de medida."
+          "No fue posible cargar las unidades de medida."
       );
     } finally {
       setLoading(false);
@@ -86,20 +106,44 @@ export default function UnidadesMedidaPage() {
   }, []);
 
   const handleCreate = () => {
-    setSelectedRow(null);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(null);
+      setOpenForm(true);
+    });
   };
 
   const handleEdit = (row: UnidadMedidaDto) => {
-    setSelectedRow(row);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(row);
+      setOpenForm(true);
+    });
+  };
+
+  const handleChangeStatus = (row: UnidadMedidaDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "status", row });
+    });
+  };
+
+  const handleDelete = (row: UnidadMedidaDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "delete", row });
+    });
   };
 
   const handleCloseForm = () => {
     if (saving) return;
 
+    blurActiveElement();
     setOpenForm(false);
     setSelectedRow(null);
+  };
+
+  const handleCloseConfirm = () => {
+    if (saving) return;
+
+    blurActiveElement();
+    setConfirmAction(null);
   };
 
   const handleSubmit = async (data: UnidadMedidaDto) => {
@@ -127,7 +171,7 @@ export default function UnidadesMedidaPage() {
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
-        "No fue posible guardar la unidad de medida."
+          "No fue posible guardar la unidad de medida."
       );
     } finally {
       setSaving(false);
@@ -171,7 +215,7 @@ export default function UnidadesMedidaPage() {
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
-        "No fue posible ejecutar la acción."
+          "No fue posible ejecutar la acción."
       );
     } finally {
       setSaving(false);
@@ -187,6 +231,7 @@ export default function UnidadesMedidaPage() {
           <Button
             variant="contained"
             startIcon={<StraightenIcon />}
+            onMouseDown={event => event.preventDefault()}
             onClick={handleCreate}
           >
             Crear unidad
@@ -216,7 +261,11 @@ export default function UnidadesMedidaPage() {
           />
         }
         right={
-          <Button variant="outlined" onClick={loadRows}>
+          <Button
+            variant="outlined"
+            onMouseDown={event => event.preventDefault()}
+            onClick={loadRows}
+          >
             Actualizar
           </Button>
         }
@@ -242,8 +291,8 @@ export default function UnidadesMedidaPage() {
           </TableHead>
 
           <TableBody>
-            {filteredRows.map(row => (
-              <TableRow key={row.prvTipunidamedUnme}>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
                 <TableCell>{row.prvTipunidamedUnme}</TableCell>
                 <TableCell>{row.prvDescmedidaUnme}</TableCell>
                 <TableCell>
@@ -253,10 +302,8 @@ export default function UnidadesMedidaPage() {
                   <CrudActionButtons
                     disabled={saving}
                     onEdit={() => handleEdit(row)}
-                    onChangeStatus={() =>
-                      setConfirmAction({ type: "status", row })
-                    }
-                    onDelete={() => setConfirmAction({ type: "delete", row })}
+                    onChangeStatus={() => handleChangeStatus(row)}
+                    onDelete={() => handleDelete(row)}
                   />
                 </TableCell>
               </TableRow>
@@ -289,7 +336,7 @@ export default function UnidadesMedidaPage() {
         confirmText={
           confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
         }
-        onClose={() => setConfirmAction(null)}
+        onClose={handleCloseConfirm}
         onConfirm={executeConfirmAction}
       />
     </Box>

@@ -30,6 +30,55 @@ type ConfirmAction =
   | { type: "disponible"; row: EquipoDto }
   | null;
 
+function blurActiveElement() {
+  if (typeof document === "undefined") return;
+
+  const activeElement = document.activeElement;
+
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+}
+
+function openModalSafely(callback: () => void) {
+  blurActiveElement();
+  window.requestAnimationFrame(() => callback());
+}
+
+function buildRowKey(row: EquipoDto, index: number) {
+  return (
+    row.prvPrimarykeyInve ??
+    row.prvIdentifkeyInve ??
+    `${row.prvNombrequipoInve ?? "INVE"}-${index}`
+  );
+}
+
+function getConfirmTitle(confirmAction: ConfirmAction) {
+  if (confirmAction?.type === "delete") return "Eliminar equipo";
+  if (confirmAction?.type === "disponible") return "Cambiar disponibilidad";
+
+  return "Cambiar estado";
+}
+
+function getConfirmMessage(confirmAction: ConfirmAction) {
+  if (confirmAction?.type === "delete") {
+    return "¿Confirmas que deseas eliminar este equipo?";
+  }
+
+  if (confirmAction?.type === "disponible") {
+    return "¿Confirmas que deseas cambiar la disponibilidad de este equipo?";
+  }
+
+  return "¿Confirmas que deseas cambiar el estado de este equipo?";
+}
+
+function getConfirmText(confirmAction: ConfirmAction) {
+  if (confirmAction?.type === "delete") return "Eliminar";
+  if (confirmAction?.type === "disponible") return "Cambiar disponibilidad";
+
+  return "Cambiar estado";
+}
+
 export default function EquiposPage() {
   const [rows, setRows] = useState<EquipoDto[]>([]);
   const [filter, setFilter] = useState("");
@@ -45,10 +94,11 @@ export default function EquiposPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.prvIdentifkeyInve,
         row.prvIdentifkeyMprv,
@@ -77,7 +127,7 @@ export default function EquiposPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
@@ -93,20 +143,50 @@ export default function EquiposPage() {
   }, []);
 
   const handleCreate = () => {
-    setSelectedRow(null);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(null);
+      setOpenForm(true);
+    });
   };
 
   const handleEdit = (row: EquipoDto) => {
-    setSelectedRow(row);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(row);
+      setOpenForm(true);
+    });
+  };
+
+  const handleChangeStatus = (row: EquipoDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "status", row });
+    });
+  };
+
+  const handleChangeDisponible = (row: EquipoDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "disponible", row });
+    });
+  };
+
+  const handleDelete = (row: EquipoDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "delete", row });
+    });
   };
 
   const handleCloseForm = () => {
     if (saving) return;
 
+    blurActiveElement();
     setOpenForm(false);
     setSelectedRow(null);
+  };
+
+  const handleCloseConfirm = () => {
+    if (saving) return;
+
+    blurActiveElement();
+    setConfirmAction(null);
   };
 
   const handleSubmit = async (data: EquipoDto) => {
@@ -206,6 +286,7 @@ export default function EquiposPage() {
           <Button
             variant="contained"
             startIcon={<InventoryIcon />}
+            onMouseDown={event => event.preventDefault()}
             onClick={handleCreate}
           >
             Crear equipo
@@ -235,7 +316,11 @@ export default function EquiposPage() {
           />
         }
         right={
-          <Button variant="outlined" onClick={loadRows}>
+          <Button
+            variant="outlined"
+            onMouseDown={event => event.preventDefault()}
+            onClick={loadRows}
+          >
             Actualizar
           </Button>
         }
@@ -267,8 +352,8 @@ export default function EquiposPage() {
           </TableHead>
 
           <TableBody>
-            {filteredRows.map(row => (
-              <TableRow key={row.prvPrimarykeyInve ?? row.prvIdentifkeyInve}>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
                 <TableCell>{row.prvIdentifkeyInve}</TableCell>
                 <TableCell>{row.prvIdentifkeyMprv}</TableCell>
                 <TableCell>{row.prvTipoequipoTieq}</TableCell>
@@ -296,24 +381,31 @@ export default function EquiposPage() {
                   </Box>
                 </TableCell>
                 <TableCell align="right">
-                  <CrudActionButtons
-                    disabled={saving}
-                    onEdit={() => handleEdit(row)}
-                    statusLabel="Estado"
-                    onChangeStatus={() =>
-                      setConfirmAction({ type: "status", row })
-                    }
-                    onDelete={() => setConfirmAction({ type: "delete", row })}
-                  />
-
-                  <Button
-                    size="small"
-                    disabled={saving}
-                    onClick={() => setConfirmAction({ type: "disponible", row })}
-                    sx={{ ml: 0.5 }}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      gap: 0.5
+                    }}
                   >
-                    Disponible
-                  </Button>
+                    <CrudActionButtons
+                      disabled={saving}
+                      onEdit={() => handleEdit(row)}
+                      statusLabel="Estado"
+                      onChangeStatus={() => handleChangeStatus(row)}
+                      onDelete={() => handleDelete(row)}
+                    />
+
+                    <Button
+                      size="small"
+                      disabled={saving}
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => handleChangeDisponible(row)}
+                    >
+                      Disponible
+                    </Button>
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -332,28 +424,10 @@ export default function EquiposPage() {
       <ConfirmDialog
         open={!!confirmAction}
         loading={saving}
-        title={
-          confirmAction?.type === "delete"
-            ? "Eliminar equipo"
-            : confirmAction?.type === "disponible"
-              ? "Cambiar disponibilidad"
-              : "Cambiar estado"
-        }
-        message={
-          confirmAction?.type === "delete"
-            ? "¿Confirmas que deseas eliminar este equipo?"
-            : confirmAction?.type === "disponible"
-              ? "¿Confirmas que deseas cambiar la disponibilidad de este equipo?"
-              : "¿Confirmas que deseas cambiar el estado de este equipo?"
-        }
-        confirmText={
-          confirmAction?.type === "delete"
-            ? "Eliminar"
-            : confirmAction?.type === "disponible"
-              ? "Cambiar disponibilidad"
-              : "Cambiar estado"
-        }
-        onClose={() => setConfirmAction(null)}
+        title={getConfirmTitle(confirmAction)}
+        message={getConfirmMessage(confirmAction)}
+        confirmText={getConfirmText(confirmAction)}
+        onClose={handleCloseConfirm}
         onConfirm={executeConfirmAction}
       />
     </Box>

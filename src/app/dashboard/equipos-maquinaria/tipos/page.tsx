@@ -29,6 +29,29 @@ type ConfirmAction =
   | { type: "status"; row: TipoEquipoDto }
   | null;
 
+function blurActiveElement() {
+  if (typeof document === "undefined") return;
+
+  const activeElement = document.activeElement;
+
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+}
+
+function openModalSafely(callback: () => void) {
+  blurActiveElement();
+  window.requestAnimationFrame(() => callback());
+}
+
+function buildRowKey(row: TipoEquipoDto, index: number) {
+  return (
+    row.prvPrimarykeyTieq ??
+    row.prvTipoequipoTieq ??
+    `TIEQ-${index}`
+  );
+}
+
 export default function TiposEquipoPage() {
   const [rows, setRows] = useState<TipoEquipoDto[]>([]);
   const [filter, setFilter] = useState("");
@@ -44,10 +67,11 @@ export default function TiposEquipoPage() {
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
+    const validRows = rows.filter(Boolean);
 
-    if (!text) return rows;
+    if (!text) return validRows;
 
-    return rows.filter(row =>
+    return validRows.filter(row =>
       [
         row.prvTipoequipoTieq,
         row.prvDescripcionTieq,
@@ -72,7 +96,7 @@ export default function TiposEquipoPage() {
         filter: ""
       });
 
-      setRows(response.rspData ?? []);
+      setRows((response.rspData ?? []).filter(Boolean));
     } catch (err) {
       setError(
         (err as { message?: string }).message ??
@@ -88,20 +112,44 @@ export default function TiposEquipoPage() {
   }, []);
 
   const handleCreate = () => {
-    setSelectedRow(null);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(null);
+      setOpenForm(true);
+    });
   };
 
   const handleEdit = (row: TipoEquipoDto) => {
-    setSelectedRow(row);
-    setOpenForm(true);
+    openModalSafely(() => {
+      setSelectedRow(row);
+      setOpenForm(true);
+    });
+  };
+
+  const handleChangeStatus = (row: TipoEquipoDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "status", row });
+    });
+  };
+
+  const handleDelete = (row: TipoEquipoDto) => {
+    openModalSafely(() => {
+      setConfirmAction({ type: "delete", row });
+    });
   };
 
   const handleCloseForm = () => {
     if (saving) return;
 
+    blurActiveElement();
     setOpenForm(false);
     setSelectedRow(null);
+  };
+
+  const handleCloseConfirm = () => {
+    if (saving) return;
+
+    blurActiveElement();
+    setConfirmAction(null);
   };
 
   const handleSubmit = async (data: TipoEquipoDto) => {
@@ -189,6 +237,7 @@ export default function TiposEquipoPage() {
           <Button
             variant="contained"
             startIcon={<CategoryIcon />}
+            onMouseDown={event => event.preventDefault()}
             onClick={handleCreate}
           >
             Crear tipo
@@ -218,7 +267,11 @@ export default function TiposEquipoPage() {
           />
         }
         right={
-          <Button variant="outlined" onClick={loadRows}>
+          <Button
+            variant="outlined"
+            onMouseDown={event => event.preventDefault()}
+            onClick={loadRows}
+          >
             Actualizar
           </Button>
         }
@@ -246,8 +299,8 @@ export default function TiposEquipoPage() {
           </TableHead>
 
           <TableBody>
-            {filteredRows.map(row => (
-              <TableRow key={row.prvPrimarykeyTieq ?? row.prvTipoequipoTieq}>
+            {filteredRows.map((row, index) => (
+              <TableRow key={buildRowKey(row, index)}>
                 <TableCell>{row.prvTipoequipoTieq}</TableCell>
                 <TableCell>{row.prvDescripcionTieq}</TableCell>
                 <TableCell>{row.prvIdentifkeyUnme}</TableCell>
@@ -259,10 +312,8 @@ export default function TiposEquipoPage() {
                   <CrudActionButtons
                     disabled={saving}
                     onEdit={() => handleEdit(row)}
-                    onChangeStatus={() =>
-                      setConfirmAction({ type: "status", row })
-                    }
-                    onDelete={() => setConfirmAction({ type: "delete", row })}
+                    onChangeStatus={() => handleChangeStatus(row)}
+                    onDelete={() => handleDelete(row)}
                   />
                 </TableCell>
               </TableRow>
@@ -295,7 +346,7 @@ export default function TiposEquipoPage() {
         confirmText={
           confirmAction?.type === "delete" ? "Eliminar" : "Cambiar estado"
         }
-        onClose={() => setConfirmAction(null)}
+        onClose={handleCloseConfirm}
         onConfirm={executeConfirmAction}
       />
     </Box>
