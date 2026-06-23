@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Obra Civil Tech - Plataforma de Control de Obras Civiles
 
-## Getting Started
+Plataforma web/móvil basada en microservicios para la gestión operativa de obras civiles, maquinaria amarilla, proveedores, control diario de obra, novedades y evidencias documentales/fotográficas.
 
-First, run the development server:
+El sistema está orientado a reemplazar procesos manuales hechos en Excel, carpetas físicas, WhatsApp y reportes informales, permitiendo trazabilidad, control y consulta estructurada del avance de obra.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 1. Objetivo del proyecto
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+El objetivo principal es controlar digitalmente el flujo operativo de una empresa de obras civiles en Colombia, desde la creación de una orden de servicio hasta el seguimiento diario de ejecución, maquinaria utilizada, novedades de campo y evidencias.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Flujo funcional principal:
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+Proveedor
+  -> Equipo / Maquinaria
+  -> Orden de servicio
+  -> Sitios o puntos de trabajo
+  -> Proyección semanal
+  -> Resumen de equipos
+  -> Plan de trabajo
+  -> Plan semanal
+  -> Reporte diario
+  -> Reporte de operación
+  -> Detalle de equipo en operación
+  -> Novedades
+  -> Evidencias
