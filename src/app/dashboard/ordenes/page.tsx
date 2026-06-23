@@ -24,7 +24,12 @@ import { CrudTableCard } from "../../../components/common/CrudTableCard";
 import { CrudActionButtons } from "../../../components/common/CrudActionButtons";
 import { OrdenServicioForm } from "../../../components/control-obras/OrdenServicioForm";
 import { controlObrasService } from "../../../services/controlObras.service";
-import { OrdenServicioDto } from "../../../types/controlObras.types";
+import { proveedoresService } from "../../../services/proveedores.service";
+import {
+  OrdenServicioDto,
+  ServicioBasicoDto
+} from "../../../types/controlObras.types";
+import { ProveedorDto } from "../../../types/proveedores.types";
 
 type ConfirmAction =
   | { type: "delete"; row: OrdenServicioDto }
@@ -61,12 +66,56 @@ function openModalSafely(callback: () => void) {
   });
 }
 
+function getRecordStringValue(item: unknown, fieldName: string) {
+  if (!item || typeof item !== "object") return undefined;
+
+  const record = item as Record<string, unknown>;
+  const value = record[fieldName];
+
+  return typeof value === "string" ? value : undefined;
+}
+
+function getProveedorKey(proveedor: ProveedorDto) {
+  return getRecordStringValue(proveedor, "prvIdentifkeyMprv") ?? "";
+}
+
+function getProveedorLabel(proveedor: ProveedorDto) {
+  const razonSocial = getRecordStringValue(proveedor, "prvRazonsocialMprv");
+  const numeroNit = getRecordStringValue(proveedor, "prvNumeronitMprv");
+  const proveedorKey = getProveedorKey(proveedor);
+
+  if (razonSocial && numeroNit) {
+    return `${razonSocial} - NIT ${numeroNit}`;
+  }
+
+  if (razonSocial) return razonSocial;
+  if (numeroNit) return `NIT ${numeroNit}`;
+
+  return proveedorKey;
+}
+
+function getServicioBasicoLabel(servicio: ServicioBasicoDto) {
+  const codigo = servicio.orsCodservicioSebs;
+  const descripcion = servicio.orsDesservicioSebs;
+
+  if (codigo && descripcion) return `${codigo} - ${descripcion}`;
+  if (descripcion) return descripcion;
+
+  return codigo;
+}
+
 export default function OrdenesServicioPage() {
   const router = useRouter();
 
   const [rows, setRows] = useState<OrdenServicioDto[]>([]);
+  const [proveedores, setProveedores] = useState<ProveedorDto[]>([]);
+  const [serviciosBasicos, setServiciosBasicos] = useState<
+    ServicioBasicoDto[]
+  >([]);
+
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingCatalogs, setLoadingCatalogs] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [openForm, setOpenForm] = useState(false);
@@ -74,7 +123,24 @@ export default function OrdenesServicioPage() {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   const [error, setError] = useState<string | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const servicioBasicoByKey = useMemo(() => {
+    return new Map(
+      serviciosBasicos
+        .filter(servicio => servicio.orsCodservicioSebs)
+        .map(servicio => [servicio.orsCodservicioSebs, servicio])
+    );
+  }, [serviciosBasicos]);
+
+  const proveedorByKey = useMemo(() => {
+    return new Map(
+      proveedores
+        .map(proveedor => [getProveedorKey(proveedor), proveedor] as const)
+        .filter(([proveedorKey]) => Boolean(proveedorKey))
+    );
+  }, [proveedores]);
 
   const filteredRows = useMemo(() => {
     const text = filter.trim().toLowerCase();
@@ -82,22 +148,32 @@ export default function OrdenesServicioPage() {
 
     if (!text) return validRows;
 
-    return validRows.filter(row =>
-      [
+    return validRows.filter(row => {
+      const servicioBasico = row.orsCodservicioSebs
+        ? servicioBasicoByKey.get(row.orsCodservicioSebs)
+        : undefined;
+
+      const proveedor = row.prvIdentifkeyMprv
+        ? proveedorByKey.get(row.prvIdentifkeyMprv)
+        : undefined;
+
+      return [
         row.orsIdentifkeyOrde,
         row.orsCodservicioSebs,
+        servicioBasico ? getServicioBasicoLabel(servicioBasico) : undefined,
         row.orsServiceventOrde,
         row.orsServiclugarOrde,
         row.orsServicobjetoOrde,
         row.prvIdentifkeyMprv,
+        proveedor ? getProveedorLabel(proveedor) : undefined,
         row.prvIdentifkeyRelg,
         row.orsTiporegistOrde,
         row.orsEstadoregOrde
       ]
         .filter(Boolean)
-        .some(value => String(value).toLowerCase().includes(text))
-    );
-  }, [rows, filter]);
+        .some(value => String(value).toLowerCase().includes(text));
+    });
+  }, [rows, filter, proveedorByKey, servicioBasicoByKey]);
 
   const loadRows = async () => {
     try {
@@ -122,8 +198,40 @@ export default function OrdenesServicioPage() {
     }
   };
 
+  const loadCatalogs = async () => {
+    try {
+      setLoadingCatalogs(true);
+      setCatalogError(null);
+
+      const proveedoresResponse = await proveedoresService.getByEstado("1");
+
+      setProveedores((proveedoresResponse.rspData ?? []).filter(Boolean));
+
+      /*
+       * Servicios básicos queda vacío temporalmente porque el backend actual
+       * no expone /api/control-obras/servicios-basicos.
+       *
+       * El formulario seguirá mostrando el campo Código servicio como entrada
+       * manual. Cuando el backend exponga ese módulo, aquí se puede volver a
+       * cargar el catálogo real.
+       */
+      setServiciosBasicos([]);
+    } catch (err) {
+      setProveedores([]);
+      setServiciosBasicos([]);
+
+      setCatalogError(
+        (err as { message?: string }).message ??
+          "No fue posible cargar los proveedores."
+      );
+    } finally {
+      setLoadingCatalogs(false);
+    }
+  };
+
   useEffect(() => {
     void loadRows();
+    void loadCatalogs();
   }, []);
 
   const handleCreate = () => {
@@ -242,6 +350,10 @@ export default function OrdenesServicioPage() {
     setConfirmAction(null);
   };
 
+  const handleRefresh = async () => {
+    await Promise.all([loadRows(), loadCatalogs()]);
+  };
+
   return (
     <Box sx={{ width: "100%" }}>
       <PageHeader
@@ -265,6 +377,12 @@ export default function OrdenesServicioPage() {
         </Alert>
       )}
 
+      {catalogError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {catalogError}
+        </Alert>
+      )}
+
       {success && (
         <Alert severity="success" sx={{ mb: 2 }}>
           {success}
@@ -283,8 +401,9 @@ export default function OrdenesServicioPage() {
         right={
           <Button
             variant="outlined"
+            disabled={loading || loadingCatalogs}
             onMouseDown={event => event.preventDefault()}
-            onClick={loadRows}
+            onClick={handleRefresh}
           >
             Actualizar
           </Button>
@@ -321,73 +440,99 @@ export default function OrdenesServicioPage() {
           </TableHead>
 
           <TableBody>
-            {filteredRows.map((row, index) => (
-              <TableRow key={buildRowKey(row, index)}>
-                <TableCell>{row.orsIdentifkeyOrde}</TableCell>
-                <TableCell>{row.orsCodservicioSebs}</TableCell>
-                <TableCell>{row.orsAutorifechaOrde}</TableCell>
-                <TableCell>{row.orsServiceventOrde}</TableCell>
-                <TableCell>{row.orsServiclugarOrde}</TableCell>
-                <TableCell>
-                  <Box
-                    component="span"
-                    sx={{
-                      display: "inline-block",
-                      maxWidth: 320,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      verticalAlign: "middle"
-                    }}
-                  >
-                    {row.orsServicobjetoOrde}
-                  </Box>
-                </TableCell>
-                <TableCell>{row.orsPlanfechiniOrde}</TableCell>
-                <TableCell>{row.orsPlanfechfinOrde}</TableCell>
-                <TableCell>{row.prvIdentifkeyMprv}</TableCell>
-                <TableCell>{formatCurrency(row.orsValorbaseOrde)}</TableCell>
-                <TableCell>{formatCurrency(row.orsValordeivaOrde)}</TableCell>
-                <TableCell>{formatCurrency(row.orsValortotalOrde)}</TableCell>
-                <TableCell>
-                  <StatusChip value={row.orsEstadoregOrde} />
-                </TableCell>
-                <TableCell align="right">
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      alignItems: "center",
-                      gap: 0.5
-                    }}
-                  >
-                    <Button
-                      size="small"
-                      startIcon={<VisibilityIcon />}
-                      disabled={!row.orsIdentifkeyOrde}
-                      onMouseDown={event => event.preventDefault()}
-                      onClick={() => handleGoToDetail(row)}
-                    >
-                      Detalle
-                    </Button>
+            {filteredRows.map((row, index) => {
+              const servicioBasico = row.orsCodservicioSebs
+                ? servicioBasicoByKey.get(row.orsCodservicioSebs)
+                : undefined;
 
-                    <CrudActionButtons
-                      disabled={saving}
-                      onEdit={() => handleEdit(row)}
-                      onChangeStatus={() => {
-                        openModalSafely(() => {
-                          setConfirmAction({ type: "status", row });
-                        });
+              const proveedor = row.prvIdentifkeyMprv
+                ? proveedorByKey.get(row.prvIdentifkeyMprv)
+                : undefined;
+
+              return (
+                <TableRow key={buildRowKey(row, index)}>
+                  <TableCell>{row.orsIdentifkeyOrde}</TableCell>
+
+                  <TableCell>
+                    {servicioBasico
+                      ? getServicioBasicoLabel(servicioBasico)
+                      : row.orsCodservicioSebs}
+                  </TableCell>
+
+                  <TableCell>{row.orsAutorifechaOrde}</TableCell>
+                  <TableCell>{row.orsServiceventOrde}</TableCell>
+                  <TableCell>{row.orsServiclugarOrde}</TableCell>
+
+                  <TableCell>
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "inline-block",
+                        maxWidth: 320,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        verticalAlign: "middle"
                       }}
-                      onDelete={() => {
-                        openModalSafely(() => {
-                          setConfirmAction({ type: "delete", row });
-                        });
+                    >
+                      {row.orsServicobjetoOrde}
+                    </Box>
+                  </TableCell>
+
+                  <TableCell>{row.orsPlanfechiniOrde}</TableCell>
+                  <TableCell>{row.orsPlanfechfinOrde}</TableCell>
+
+                  <TableCell>
+                    {proveedor
+                      ? getProveedorLabel(proveedor)
+                      : row.prvIdentifkeyMprv}
+                  </TableCell>
+
+                  <TableCell>{formatCurrency(row.orsValorbaseOrde)}</TableCell>
+                  <TableCell>{formatCurrency(row.orsValordeivaOrde)}</TableCell>
+                  <TableCell>{formatCurrency(row.orsValortotalOrde)}</TableCell>
+
+                  <TableCell>
+                    <StatusChip value={row.orsEstadoregOrde} />
+                  </TableCell>
+
+                  <TableCell align="right">
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        alignItems: "center",
+                        gap: 0.5
                       }}
-                    />
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
+                    >
+                      <Button
+                        size="small"
+                        startIcon={<VisibilityIcon />}
+                        disabled={!row.orsIdentifkeyOrde}
+                        onMouseDown={event => event.preventDefault()}
+                        onClick={() => handleGoToDetail(row)}
+                      >
+                        Detalle
+                      </Button>
+
+                      <CrudActionButtons
+                        disabled={saving}
+                        onEdit={() => handleEdit(row)}
+                        onChangeStatus={() => {
+                          openModalSafely(() => {
+                            setConfirmAction({ type: "status", row });
+                          });
+                        }}
+                        onDelete={() => {
+                          openModalSafely(() => {
+                            setConfirmAction({ type: "delete", row });
+                          });
+                        }}
+                      />
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </CrudTableCard>
@@ -396,6 +541,8 @@ export default function OrdenesServicioPage() {
         open={openForm}
         loading={saving}
         initialData={selectedRow}
+        proveedores={proveedores}
+        serviciosBasicos={serviciosBasicos}
         onClose={handleCloseForm}
         onSubmit={handleSubmit}
       />

@@ -1,4 +1,4 @@
-import { ApiResponse, PageParams } from "../types/common.types";
+import { ApiResponse } from "../types/common.types";
 import {
   ActaModificacionDetalleDto,
   ActaModificacionDto,

@@ -1,5 +1,11 @@
 import { EstadoRegistro } from "./common.types";
 
+export interface ServicioBasicoDto {
+  orsCodservicioSebs: string;
+  orsDesservicioSebs?: string;
+  orsEstadoregSebs?: EstadoRegistro;
+}
+
 export interface OrdenServicioDto {
   orsPrimarykeyOrde?: number;
   orsIdentifkeyOrde: string;

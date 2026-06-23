@@ -13,15 +13,13 @@ import {
 } from "../types/controlObras.types";
 
 function sameKey(value?: string, key?: string) {
-  return String(value ?? "").trim().toLowerCase() === String(key ?? "").trim().toLowerCase();
-}
-
-function onlyByOrden<T extends { orsIdentifkeyOrde?: string }>(
-  rows: T[] | undefined,
-  ordenKey: string
-) {
-  return (rows ?? []).filter(Boolean).filter(row =>
-    sameKey(row.orsIdentifkeyOrde, ordenKey)
+  return (
+    String(value ?? "")
+      .trim()
+      .toLowerCase() ===
+    String(key ?? "")
+      .trim()
+      .toLowerCase()
   );
 }
 
@@ -34,6 +32,77 @@ async function getPageData<T>(
   } catch {
     return [];
   }
+}
+
+async function getOrdenByKey(ordenKey: string): Promise<OrdenServicioDto | null> {
+  try {
+    const response = await controlObrasService.ordenes.getPages({
+      currentPage: 1,
+      pageSize: 500,
+      parameter: "TEXT",
+      filter: ""
+    });
+
+    const ordenes = (response.rspData ?? []).filter(Boolean);
+
+    return (
+      ordenes.find(row => sameKey(row.orsIdentifkeyOrde, ordenKey)) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function getSitiosByOrden(ordenKey: string): Promise<SitioPuntoDto[]> {
+  return getPageData(() => controlObrasService.sitios.getByOrden(ordenKey));
+}
+
+async function getProyeccionesByOrden(
+  ordenKey: string
+): Promise<ProyeccionDto[]> {
+  return getPageData(() =>
+    controlObrasService.proyeccionSemanal.getByOrden(ordenKey)
+  );
+}
+
+async function getPlanesByOrden(ordenKey: string): Promise<PlanTrabajoDto[]> {
+  return getPageData(() => controlObrasService.planes.getByOrden(ordenKey));
+}
+
+async function getPlanesSemanalesByOrden(
+  ordenKey: string
+): Promise<PlanSemanalDto[]> {
+  return getPageData(() =>
+    controlObrasService.planesSemanales.getByOrden(ordenKey)
+  );
+}
+
+async function getReportesDiariosByOrden(
+  ordenKey: string
+): Promise<ReporteDiarioDto[]> {
+  return getPageData(() =>
+    controlObrasService.reportesDiarios.getByOrden(ordenKey)
+  );
+}
+
+async function getNovedadesByOrden(ordenKey: string): Promise<NovedadDto[]> {
+  return getPageData(() => controlObrasService.novedades.getByOrden(ordenKey));
+}
+
+async function getResumenEquiposByOrden(
+  ordenKey: string
+): Promise<ResumenEquipoDto[]> {
+  return getPageData(() =>
+    controlObrasService.resumenEquipos.getByOrden(ordenKey)
+  );
+}
+
+async function getActasModificacionByOrden(
+  ordenKey: string
+): Promise<ActaModificacionDto[]> {
+  return getPageData(() =>
+    controlObrasService.actasModificacion.getByOrden(ordenKey)
+  );
 }
 
 async function getAvanceOrden(ordenKey: string): Promise<AvanceObraDto[]> {
@@ -64,7 +133,7 @@ export interface OrdenTraceabilityData {
 export const ordenTraceabilityService = {
   async getByOrden(ordenKey: string): Promise<OrdenTraceabilityData> {
     const [
-      ordenes,
+      orden,
       sitios,
       proyecciones,
       planes,
@@ -75,103 +144,28 @@ export const ordenTraceabilityService = {
       actasModificacion,
       avance
     ] = await Promise.all([
-      getPageData(() =>
-        controlObrasService.ordenes.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
-      getPageData(() =>
-        controlObrasService.sitios.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
-      getPageData(() =>
-        controlObrasService.proyeccionSemanal.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
-      getPageData(() =>
-        controlObrasService.planes.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
-      getPageData(() =>
-        controlObrasService.planesSemanales.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
-      getPageData(() =>
-        controlObrasService.reportesDiarios.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
-      getPageData(() =>
-        controlObrasService.novedades.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
-      getPageData(() =>
-        controlObrasService.resumenEquipos.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
-      getPageData(() =>
-        controlObrasService.actasModificacion.getPages({
-          currentPage: 1,
-          pageSize: 500,
-          parameter: "TEXT",
-          filter: ""
-        })
-      ),
-
+      getOrdenByKey(ordenKey),
+      getSitiosByOrden(ordenKey),
+      getProyeccionesByOrden(ordenKey),
+      getPlanesByOrden(ordenKey),
+      getPlanesSemanalesByOrden(ordenKey),
+      getReportesDiariosByOrden(ordenKey),
+      getNovedadesByOrden(ordenKey),
+      getResumenEquiposByOrden(ordenKey),
+      getActasModificacionByOrden(ordenKey),
       getAvanceOrden(ordenKey)
     ]);
 
-    const orden =
-      ordenes.find(row => sameKey(row.orsIdentifkeyOrde, ordenKey)) ?? null;
-
     return {
       orden,
-      sitios: onlyByOrden(sitios, ordenKey),
-      proyecciones: onlyByOrden(proyecciones, ordenKey),
-      planes: onlyByOrden(planes, ordenKey),
-      planesSemanales: onlyByOrden(planesSemanales, ordenKey),
-      reportesDiarios: onlyByOrden(reportesDiarios, ordenKey),
-      novedades: onlyByOrden(novedades, ordenKey),
-      resumenEquipos: onlyByOrden(resumenEquipos, ordenKey),
-      actasModificacion: onlyByOrden(actasModificacion, ordenKey),
+      sitios,
+      proyecciones,
+      planes,
+      planesSemanales,
+      reportesDiarios,
+      novedades,
+      resumenEquipos,
+      actasModificacion,
       avance
     };
   }
